@@ -1,0 +1,14 @@
+{
+"Limits":
+{
+   "MaxInstalledApplications":20,
+   "MaxRunningApplications":10,
+   "MaxMemoryUsageInGB":8.0,
+   "MaxStorageUsageInGB":20.0,
+   "MaxCpuUsagePerecentage":100
+},
+"MonitoredStorage":
+{
+   "Path":"/"
+}
+}
