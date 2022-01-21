@@ -1,0 +1,91 @@
+/*
+ * Copyright (c) 2021 Siemens AG
+ * Licensed under the MIT license
+ * See LICENSE file in the top-level directory
+ */
+
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+option go_package = ".;siemens_iedge_dmapi_v1";
+package siemens.iedge.dmapi.system.v1;
+
+//ModelNumber type indicates device specific model information.
+message ModelNumber{
+    string modelNumber =1; // Can be MLFB for SIEMENS devices, for 3rd party vendors it can be any model information.
+}
+
+// FirmwareInfo contains Firmware Version.
+message FirmwareInfo{
+    string version =1; // Firmware version.
+}
+
+// System Resource , memory or storage.
+message Resource{
+    float totalSpaceInGB =1; // Total capacity of storage device in Gigabytes e.g: 3.5
+    float freeSpaceInGB =2; // Free space of storage device in Gigabytes e.g: 40.4
+    float usedSpaceInGB =3; // Used space of storage device in Gigabytes e.g: 23.2
+    float percentageFreeSpace =4; // Percentage of available space e.g: 3.5
+    float percentageUsedSpace =5; // Percentage of used space e.g: 96.5
+}
+// Cpu type contains Cpu utilization at the current moment.
+message Cpu{
+     float usedCpuPercentage =1; // Percentage of used CPU e.g: 20.0
+     float freeCpuPercentage =2; // Percentage of available CPU e.g: 80.0
+     int32 coreCount =3; // Total available core count for CPU.e.g  2C/4T CPU value will be 4
+     string modelInfo =4; // intel x64 etc..
+}
+// System Utilization type. Cpu, storage and memory utilization.
+message Stats{
+    Cpu cpu =1;  // Cpu Utilization
+    repeated Resource storageDevices=2; // StorageDevices array of Resource type.
+    Resource memory =3; // RAM Utilization Information
+    string upTime =4; // Elapsed time since the device is started.
+}  
+
+// System Limits for the EdgeRuntime.
+message Limits{
+    int32 maxInstalledApplications =1; // Maximum allowed number of installed edge applications.
+    int32 maxRunningApplications =2; // Maximum allowed number of running edge applications.
+    float maxMemoryUsageInGB =3; // Maximum allowed memory usage in Gigabytes.
+    float maxStorageUsageInGB =4; // Maximum allowed disk usage in Gigabytes.
+    float maxCpuUsagePerecentage =5; // Maximum allowed percentage of CPU usage.
+}
+// LogRequest type, determines the destination path for saving log file.
+message LogRequest{
+    string saveFolderPath =1; // Folder path for saving gathered logs.
+}
+// LogResponse type, contains the full path for the collected log archive.
+message LogResponse{
+    string logPath =1; // Full file path for collected log archive.
+}
+// System service ,uses a UNIX Domain Socket "/var/run/devicemodel/system.sock" for GRPC communication.
+// protoc  generates both client and server instance for this Service.
+// GRPC Status codes : https://developers.google.com/maps-booking/reference/grpc-api/status_codes .
+service SystemService {
+    
+    //Restarts the device
+    rpc RestartDevice(google.protobuf.Empty) returns(google.protobuf.Empty);
+    
+    //ShutsDown the device.
+    rpc ShutdownDevice(google.protobuf.Empty) returns(google.protobuf.Empty);
+    
+    // Performs host side actions in addition to edge-core for hard reset. e.g: cleaning hard-reset flag(mandatory) ,custom device builder steps(optional) and finally reboots the system(mandatory). 
+    rpc HardReset(google.protobuf.Empty) returns(google.protobuf.Empty);
+ 
+	//Returns model number (mlfb) for siemens or any type model for 3rd party vendors.
+    rpc GetModelNumber(google.protobuf.Empty) returns(ModelNumber);
+	
+	//Returns firmware information of currently installed firmware
+    rpc GetFirmwareInfo(google.protobuf.Empty) returns(FirmwareInfo);
+    
+    //Returns current Cpu, Memory, Uptime and Storage usage
+    rpc GetResourceStats(google.protobuf.Empty) returns(Stats);
+    
+    //Returns limits for how many applications and how much cpu, ram and storage should be available for applications.
+    rpc GetLimits(google.protobuf.Empty) returns(Limits);
+    
+    //Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. 
+    rpc GetLogFile(LogRequest) returns(LogResponse);
+
+  
+}

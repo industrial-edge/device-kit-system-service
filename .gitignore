@@ -1,0 +1,8 @@
+.scannerwork/
+SummaryOfProjectAnalysis.json
+logs\\pclint-importer/
+.idea/*
+.vscode/
+**/coverage.cov
+**/*report.out
+build/package/dist**
