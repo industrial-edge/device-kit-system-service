@@ -48,10 +48,12 @@ nfpms:
   dependencies:
     - dmidecode
 
-  files:
-    "dm-system.service": "/lib/systemd/system/dm-system.service"
-    "../../cmd/systemservice/default.json": "/opt/limits/default.json"
+  contents:
+    - src: "dm-system.service"
+      dst: "/lib/systemd/system/dm-system.service"
 
+    - src: "../../cmd/systemservice/default.json"
+      dst: "/opt/limits/default.json"
 
   # Override default /usr/local/bin destination for binaries
   bindir: /usr/bin

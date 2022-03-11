@@ -3,9 +3,11 @@
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
-
+ 
 syntax = "proto3";
 import "google/protobuf/empty.proto";
+import "google/protobuf/any.proto";
+
 option go_package = ".;siemens_iedge_dmapi_v1";
 package siemens.iedge.dmapi.system.v1;
 
@@ -18,6 +20,7 @@ message ModelNumber{
 message FirmwareInfo{
     string version =1; // Firmware version.
 }
+
 
 // System Resource , memory or storage.
 message Resource{
@@ -58,6 +61,7 @@ message LogRequest{
 message LogResponse{
     string logPath =1; // Full file path for collected log archive.
 }
+ 
 // System service ,uses a UNIX Domain Socket "/var/run/devicemodel/system.sock" for GRPC communication.
 // protoc  generates both client and server instance for this Service.
 // GRPC Status codes : https://developers.google.com/maps-booking/reference/grpc-api/status_codes .
@@ -83,6 +87,12 @@ service SystemService {
     
     //Returns limits for how many applications and how much cpu, ram and storage should be available for applications.
     rpc GetLimits(google.protobuf.Empty) returns(Limits);
+
+    //Returns device specific custom settings.
+    rpc GetCustomSettings(google.protobuf.Empty) returns(google.protobuf.Any);
+
+    //Applies device specific custom settings.
+    rpc ApplyCustomSettings(google.protobuf.Any) returns(google.protobuf.Empty);
     
     //Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. 
     rpc GetLogFile(LogRequest) returns(LogResponse);
