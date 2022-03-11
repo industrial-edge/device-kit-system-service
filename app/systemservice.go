@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/ptypes/any"
 	"os"
 	"os/user"
 	"strconv"
@@ -273,4 +274,22 @@ func (s systemServer) GetLogFile(ctx context.Context, req *v1.LogRequest) (*v1.L
 	}
 	s.Unlock()
 	return retVal, status.New(codes.OK, "fine").Err()
+}
+
+// GetCustomSettings Returns device specific custom settings.
+func (s systemServer) GetCustomSettings(ctx context.Context, e *empty.Empty) (*any.Any, error) {
+	log.Println("GetCustomSettings called")
+	//device builders' custom implementation should be placed in here
+
+	return &any.Any{}, nil
+}
+
+// ApplyCustomSettings Applies device specific custom settings.
+func (s systemServer) ApplyCustomSettings(ctx context.Context, customSettings *any.Any) (*empty.Empty, error) {
+	log.Println("ApplyCustomSettings called")
+
+	//device builders' custom implementation should be placed in here
+
+	log.Println("custom settings : ", string(customSettings.Value))
+	return &empty.Empty{}, nil
 }
