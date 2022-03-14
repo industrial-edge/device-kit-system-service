@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"github.com/golang/protobuf/ptypes/any"
 	"testing"
 
 	//systemapi "systemservice/api/siemens_iedge_dmapi_v1"
@@ -223,4 +224,37 @@ func Test_GetResourceStatsFailure(t *testing.T) {
 	tApp.done <- true
 
 	assert.Contains(t, err.Error(), "Failed to GetResourceStats", "Did not get expected result. expected: %q got: %q", "Failed to GetResourceStats", err.Error())
+}
+
+func Test_GetCustomSettings(t *testing.T) {
+	t.Parallel()
+	tApp, dummyCtx, dummyEmpty := initializeRPCDatas()
+
+	_, err := tApp.serverInstance.GetCustomSettings(dummyCtx, dummyEmpty)
+	if err != nil {
+		t.Log("FAILED GetCustomSettings")
+		t.Fail()
+	}
+
+	// Kill the goroutine
+	tApp.done <- true
+}
+
+func Test_ApplyCustomSettings(t *testing.T) {
+	t.Parallel()
+	tApp, dummyCtx, _ := initializeRPCDatas()
+
+	jsonTxt := []byte(`{ "key" : "value", "key2" : "value2" }`)
+
+	anyMessage := any.Any{
+		Value:   jsonTxt,
+	}
+
+	_, err := tApp.serverInstance.ApplyCustomSettings(dummyCtx, &anyMessage)
+	if err !=nil {
+		t.Log("FAILED ApplyCustomSettings")
+		t.Fail()
+	}
+	//Kill the goroutine
+	tApp.done <- true
 }
