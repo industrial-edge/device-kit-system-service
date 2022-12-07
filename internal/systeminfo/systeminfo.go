@@ -25,6 +25,7 @@ const (
 	//in order to get a proper cpu usage at least we need to run this command twice (!NOT IN USE Right Now)
 	cpuUsage         = "top -b -n2 | grep Cpu"
 	dmidecodeVersion = "dmidecode --string system-product-name"
+	templogfileDir   = "/var/log/journal"
 )
 
 //SystemInfo is a struct that provides System Info
@@ -324,11 +325,15 @@ func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogRes
 		return nil, errCheck
 	}
 
+	templogfileName := "logs" + "_" + time.Now().Format("20060102150405")
+	templogfilePath := templogfileDir + "/" + templogfileName
+
 	// Get logs with the help of "journalctl" command
-	saveJournalCommand := "journalctl > logs"
+	saveJournalCommand := "journalctl > " + templogfilePath
 	out, err := s.util.Commander(saveJournalCommand)
 	if err != nil {
-		log.Printf("Error  journalctl > logs output : %s, error : %s",
+		log.Printf("Error  %s output : %s, error : %s",
+			saveJournalCommand,
 			strings.Trim(strings.TrimSuffix(string(out), "\n"), "\""), err.Error())
 		return nil, err
 	}
@@ -365,11 +370,14 @@ func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogRes
 	logName := "devicelogs_" + uniqIdentifierForLogFile + time.Now().Format("20060102150405") + ".tar.gz"
 	logName = strings.Replace(logName, " ", "", -1)
 	log.Println("logName  :", logName)
-	//compress log file and create zip with the help of "tar"  command.
-	zipCommand := "tar -czvf " + strings.TrimSuffix(request.SaveFolderPath, "/") + "/" + logName + " logs --remove-files"
+	//compress log file and create zip with the help of "tar"  command. Rename the file to "logs" in the archive.
+	zipCommand := "tar -czvf " + strings.TrimSuffix(request.SaveFolderPath, "/") + "/" + logName +
+		" --transform='flags=r;s|" + templogfileName + "|logs|'" +
+		" -C " + templogfileDir + " " + templogfileName + " --remove-files"
 	outZip, errZip := s.util.Commander(zipCommand)
 	if errZip != nil {
-		log.Printf("Error tar -czvf logs.tar.gz logs output : %s, error : %s",
+		log.Printf("Error %s output : %s, error : %s",
+			zipCommand,
 			strings.Trim(strings.TrimSuffix(string(outZip), "\n"), "\""), errZip.Error())
 		return nil, errZip
 	}
