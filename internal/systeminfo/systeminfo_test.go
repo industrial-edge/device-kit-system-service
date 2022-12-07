@@ -257,6 +257,7 @@ func Test_SystemInfo_GetLogFile_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnZip(t *testing.T) {
@@ -283,6 +284,7 @@ func Test_SystemInfo_GetLogFile_ErrorOnZip(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.Error(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnCatDeviceName(t *testing.T) {
@@ -309,6 +311,7 @@ func Test_SystemInfo_GetLogFile_ErrorOnCatDeviceName(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnPathCheck(t *testing.T) {
@@ -323,6 +326,7 @@ func Test_SystemInfo_GetLogFile_ErrorOnPathCheck(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.Error(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnJournalctl(t *testing.T) {
@@ -340,6 +344,7 @@ func Test_SystemInfo_GetLogFile_ErrorOnJournalctl(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.Error(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheck(t *testing.T) {
@@ -366,6 +371,7 @@ func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheck(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheckAndHostname(t *testing.T) {
@@ -392,4 +398,5 @@ func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheckAndHostname(t *testing
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
