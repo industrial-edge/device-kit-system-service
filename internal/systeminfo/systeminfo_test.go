@@ -2,11 +2,13 @@ package systeminfo
 
 import (
 	"errors"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/stretchr/testify/assert"
+	"github.com/shirou/gopsutil/v3/cpu"
 	systemapi "systemservice/api/siemens_iedge_dmapi_v1"
 	"systemservice/internal/common/mocks"
 	"testing"
+
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/stretchr/testify/assert"
 )
 
 var TestContentProperFirmwareInfo = `VARIANT="IEMS_0.0.9-dev_x86"
@@ -184,6 +186,18 @@ func Test_GetCpuStatsFailure(t *testing.T) {
 
 	_, err = tsysInfo.getCPUStats()
 	assert.NotNil(t, err, "Did not get expected result.  got: %q", err)
+}
+
+func Test_GetCpuStatsSuccess(t *testing.T) {
+	//Prepare Content
+	t.Parallel()
+	_, tUtil, tsysInfo := initialize()
+	res, _ := tUtil.CPUInfo()
+	newRes := append(res, cpu.InfoStat{ModelName: "test"})
+	tUtil.CPUInfoVal = newRes
+
+	_, err := tsysInfo.getCPUStats()
+	assert.Nil(t, err, "Did not get expected result.  got: %q", err)
 }
 
 func Test_GetStorageStats_Fails_Due_To_Read_Error(t *testing.T) {

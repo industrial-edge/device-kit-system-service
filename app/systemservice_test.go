@@ -3,14 +3,13 @@ package app
 import (
 	"context"
 	"errors"
-	"github.com/golang/protobuf/ptypes/any"
 	"testing"
 
-	//systemapi "systemservice/api/siemens_iedge_dmapi_v1"
 	v1 "systemservice/api/siemens_iedge_dmapi_v1"
 	clientfct "systemservice/internal/clientfactory"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"time"
@@ -19,6 +18,17 @@ import (
 type tSystemController struct {
 }
 
+type tSystemController2 struct {
+}
+func (s tSystemController2) RestartDevice() error {
+	return nil
+}
+func (s tSystemController2) ShutdownDevice() error {
+	return nil
+}
+func (s tSystemController2) HardReset(ctx context.Context, pack *clientfct.ClientPack) error {
+	return nil
+}
 func (s tSystemController) RestartDevice() error {
 	return errors.New("Failed RestartDevice")
 }
@@ -151,6 +161,23 @@ func Test_RestartFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), "Failed to Restart", "Did not get expected result. expected: %q got: %q", "Failed to Restart", err.Error())
 }
 
+func Test_RestartSuccess(t *testing.T) {
+	t.Parallel()
+	var dummyctx context.Context
+	var dummyEmpty *emptypb.Empty
+	tApp := CreateServiceApp(clientfct.ClientFactoryImpl{})
+	tApp.serverInstance.IsysController = tSystemController2{}
+	tApp.serverInstance.IsysInfo = tSystemInfo{}
+	tApp.StartApp()
+
+	_, err := tApp.serverInstance.RestartDevice(dummyctx, dummyEmpty)
+
+	//Kill the goroutine
+	tApp.done <- true
+
+	assert.Nil(t, err)
+}
+
 func Test_ShutdownFailure(t *testing.T) {
 	t.Parallel()
 
@@ -164,6 +191,23 @@ func Test_ShutdownFailure(t *testing.T) {
 	assert.Contains(t, err.Error(), "Failed to Shutdown", "Did not get expected result. expected: %q got: %q", "Failed to Shutdown", err.Error())
 }
 
+func Test_ShutdownSuccess(t *testing.T) {
+	t.Parallel()
+	var dummyctx context.Context
+	var dummyEmpty *emptypb.Empty
+	tApp := CreateServiceApp(clientfct.ClientFactoryImpl{})
+	tApp.serverInstance.IsysController = tSystemController2{}
+	tApp.serverInstance.IsysInfo = tSystemInfo{}
+	tApp.StartApp()
+
+	_, err := tApp.serverInstance.ShutdownDevice(dummyctx, dummyEmpty)
+
+	//Kill the goroutine
+	tApp.done <- true
+
+	assert.Nil(t, err)
+}
+
 func Test_HardResetFailuret(t *testing.T) {
 	t.Parallel()
 
@@ -175,6 +219,23 @@ func Test_HardResetFailuret(t *testing.T) {
 	tApp.done <- true
 
 	assert.Contains(t, err.Error(), "Failed to HardReset", "Did not get expected result. expected: %q got: %q", "Failed to HardReset", err.Error())
+}
+
+func Test_HardResetSuccess(t *testing.T) {
+	t.Parallel()
+	var dummyctx context.Context
+	var dummyEmpty *emptypb.Empty
+	tApp := CreateServiceApp(clientfct.ClientFactoryImpl{})
+	tApp.serverInstance.IsysController = tSystemController2{}
+	tApp.serverInstance.IsysInfo = tSystemInfo{}
+	tApp.StartApp()
+
+	_, err := tApp.serverInstance.HardReset(dummyctx, dummyEmpty)
+
+	//Kill the goroutine
+	tApp.done <- true
+
+	assert.Nil(t, err)
 }
 
 func Test_GetLimitsFailuret(t *testing.T) {
@@ -246,12 +307,12 @@ func Test_ApplyCustomSettings(t *testing.T) {
 
 	jsonTxt := []byte(`{ "key" : "value", "key2" : "value2" }`)
 
-	anyMessage := any.Any{
-		Value:   jsonTxt,
+	anyMessage := anypb.Any{
+		Value: jsonTxt,
 	}
 
 	_, err := tApp.serverInstance.ApplyCustomSettings(dummyCtx, &anyMessage)
-	if err !=nil {
+	if err != nil {
 		t.Log("FAILED ApplyCustomSettings")
 		t.Fail()
 	}

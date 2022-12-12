@@ -6,3 +6,4 @@ logs\\pclint-importer/
 **/coverage.cov
 **/*report.out
 build/package/dist**
+**/bin**

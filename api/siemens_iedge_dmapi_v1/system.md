@@ -182,6 +182,8 @@ GRPC Status codes : https://developers.google.com/maps-booking/reference/grpc-ap
 | GetFirmwareInfo | [.google.protobuf.Empty](#google.protobuf.Empty) | [FirmwareInfo](#siemens.iedge.dmapi.system.v1.FirmwareInfo) | Returns firmware information of currently installed firmware |
 | GetResourceStats | [.google.protobuf.Empty](#google.protobuf.Empty) | [Stats](#siemens.iedge.dmapi.system.v1.Stats) | Returns current Cpu, Memory, Uptime and Storage usage |
 | GetLimits | [.google.protobuf.Empty](#google.protobuf.Empty) | [Limits](#siemens.iedge.dmapi.system.v1.Limits) | Returns limits for how many applications and how much cpu, ram and storage should be available for applications. |
+| GetCustomSettings | [.google.protobuf.Empty](#google.protobuf.Empty) | [.google.protobuf.Any](#google.protobuf.Any) | Returns device specific custom settings. |
+| ApplyCustomSettings | [.google.protobuf.Any](#google.protobuf.Any) | [.google.protobuf.Empty](#google.protobuf.Empty) | Applies device specific custom settings. |
 | GetLogFile | [LogRequest](#siemens.iedge.dmapi.system.v1.LogRequest) | [LogResponse](#siemens.iedge.dmapi.system.v1.LogResponse) | Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. |
 
  <!-- end services -->
