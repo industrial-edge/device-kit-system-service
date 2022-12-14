@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Siemens AG
+ * Copyright (c) 2022 Siemens AG
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -10,7 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/ptypes/any"
+	"google.golang.org/protobuf/types/known/anypb"
 	"os"
 	"os/user"
 	"strconv"
@@ -25,26 +25,27 @@ import (
 	sysController "systemservice/internal/systemcontroller"
 	sysInfo "systemservice/internal/systeminfo"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-//DeviceModelService interface to start operations
+// DeviceModelService interface to start operations
 type DeviceModelService interface {
 	StartGRPC(args []string)
 	StartApp()
 }
 
 type systemServer struct {
+	v1.UnimplementedSystemServiceServer
 	IsysController systemControllerAPI
 	IsysInfo       systemInfoAPI
 	Clients        *clientfct.ClientPack
 	sync.Mutex
 }
 
-//MainApp represents the Main Application
+// MainApp represents the Main Application
 type MainApp struct {
 	serverInstance *systemServer
 	done           chan bool
@@ -64,7 +65,7 @@ type systemControllerAPI interface {
 	HardReset(context.Context, *clientfct.ClientPack) error
 }
 
-//CreateServiceApp is used to start a new service application from main.go
+// CreateServiceApp is used to start a new service application from main.go
 func CreateServiceApp(factory clientfct.ClientFactory) *MainApp {
 	app := MainApp{
 		serverInstance: &systemServer{Clients: factory.CreateClients()},
@@ -100,7 +101,7 @@ func chownSocket(address string, userName string, groupName string) error {
 
 }
 
-//StartGRPC initiates GRPC relevant operations
+// StartGRPC initiates GRPC relevant operations
 func (app *MainApp) StartGRPC(args []string) error {
 	const message string = "ERROR: Could not start monitor with bad arguments! \n " +
 		"Sample usage:\n  ./ntpservice unix /tmp/devicemodel/ntp.socket \n" +
@@ -151,7 +152,7 @@ func (app *MainApp) StartGRPC(args []string) error {
 	return nil
 }
 
-//StartApp initiates App relevant operations and listens for the actions
+// StartApp initiates App relevant operations and listens for the actions
 func (app *MainApp) StartApp() {
 	//wait for app.done signal
 	go func() {
@@ -168,47 +169,47 @@ func (app *MainApp) StartApp() {
 // GRPC method implementations ################################################################################
 // ############################################################################################################
 
-//Implementation of RPC method given systemapi proto file
-func (s systemServer) RestartDevice(ctx context.Context, e *empty.Empty) (*empty.Empty, error) {
+// RestartDevice Implementation of RPC method given systemapi proto file
+func (s systemServer) RestartDevice(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, error) {
 	log.Println("RestartDevice() enter:")
 
 	defer log.Println("RestartDevice() leave")
 	if err := s.IsysController.RestartDevice(); err != nil {
 		log.Println("RestartDevice() RPC Failure err: ", err)
-		return &empty.Empty{}, status.New(codes.Internal, "Failed to Restart").Err()
+		return &emptypb.Empty{}, status.New(codes.Internal, "Failed to Restart").Err()
 	}
 
-	return &empty.Empty{}, status.New(codes.OK, "fine").Err()
+	return &emptypb.Empty{}, status.New(codes.OK, "fine").Err()
 }
 
-//Implementation of RPC method given systemapi proto file
-func (s systemServer) ShutdownDevice(ctx context.Context, e *empty.Empty) (*empty.Empty, error) {
+// ShutdownDevice Implementation of RPC method given systemapi proto file
+func (s systemServer) ShutdownDevice(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, error) {
 	log.Println("ShutdownDevice() enter:")
 
 	defer log.Println("ShutdownDevice() leave")
 	if err := s.IsysController.ShutdownDevice(); err != nil {
 		log.Println("ShutdownDevice() RPC Failure err: ", err)
-		return &empty.Empty{}, status.New(codes.Internal, "Failed to Shutdown").Err()
+		return &emptypb.Empty{}, status.New(codes.Internal, "Failed to Shutdown").Err()
 	}
 
-	return &empty.Empty{}, status.New(codes.OK, "fine").Err()
+	return &emptypb.Empty{}, status.New(codes.OK, "fine").Err()
 }
 
-//Implementation of RPC method given systemapi proto file
-func (s systemServer) HardReset(ctx context.Context, e *empty.Empty) (*empty.Empty, error) {
+// HardReset Implementation of RPC method given systemapi proto file
+func (s systemServer) HardReset(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, error) {
 	log.Println("HardReset() enter:")
 
 	defer log.Println("HardReset() leave")
 	if err := s.IsysController.HardReset(ctx, s.Clients); err != nil {
 		log.Println("HardReset() RPC Failure err: ", err)
-		return &empty.Empty{}, status.New(codes.Internal, "Failed to HardReset err:"+err.Error()).Err()
+		return &emptypb.Empty{}, status.New(codes.Internal, "Failed to HardReset err:"+err.Error()).Err()
 	}
 
-	return &empty.Empty{}, status.New(codes.OK, "fine").Err()
+	return &emptypb.Empty{}, status.New(codes.OK, "fine").Err()
 }
 
-//Implementation of RPC method given systemapi proto file
-func (s systemServer) GetModelNumber(ctx context.Context, e *empty.Empty) (*v1.ModelNumber, error) {
+// GetModelNumber Implementation of RPC method given systemapi proto file
+func (s systemServer) GetModelNumber(ctx context.Context, e *emptypb.Empty) (*v1.ModelNumber, error) {
 	log.Println("GetModelNumber() enter:")
 
 	defer log.Println("GetModelNumber() leave")
@@ -221,8 +222,8 @@ func (s systemServer) GetModelNumber(ctx context.Context, e *empty.Empty) (*v1.M
 	return retval, status.New(codes.OK, "fine").Err()
 }
 
-//Implementation of RPC method given systemapi proto file
-func (s systemServer) GetFirmwareInfo(ctx context.Context, e *empty.Empty) (*v1.FirmwareInfo, error) {
+// GetFirmwareInfo Implementation of RPC method given systemapi proto file
+func (s systemServer) GetFirmwareInfo(ctx context.Context, e *emptypb.Empty) (*v1.FirmwareInfo, error) {
 	log.Println("GetFirmwareInfo() enter:")
 	defer log.Println("GetFirmwareInfo() leave")
 	retval, err := s.IsysInfo.GetFirmwareInfo()
@@ -234,8 +235,8 @@ func (s systemServer) GetFirmwareInfo(ctx context.Context, e *empty.Empty) (*v1.
 	return retval, status.New(codes.OK, "fine").Err()
 }
 
-//Implementation of RPC method given systemapi proto file
-func (s systemServer) GetResourceStats(ctx context.Context, e *empty.Empty) (*v1.Stats, error) {
+// GetResourceStats Implementation of RPC method given systemapi proto file
+func (s systemServer) GetResourceStats(ctx context.Context, e *emptypb.Empty) (*v1.Stats, error) {
 	log.Println("GetResourceStats() enter:")
 
 	defer log.Println("GetResourceStats() leave")
@@ -248,8 +249,8 @@ func (s systemServer) GetResourceStats(ctx context.Context, e *empty.Empty) (*v1
 	return retval, status.New(codes.OK, "fine").Err()
 }
 
-//Implementation of RPC method given systemapi proto file
-func (s systemServer) GetLimits(ctx context.Context, e *empty.Empty) (*v1.Limits, error) {
+// GetLimits Implementation of RPC method given systemapi proto file
+func (s systemServer) GetLimits(ctx context.Context, e *emptypb.Empty) (*v1.Limits, error) {
 	log.Println("GetLimits() enter:")
 
 	defer log.Println("GetLimits() leave")
@@ -277,19 +278,19 @@ func (s systemServer) GetLogFile(ctx context.Context, req *v1.LogRequest) (*v1.L
 }
 
 // GetCustomSettings Returns device specific custom settings.
-func (s systemServer) GetCustomSettings(ctx context.Context, e *empty.Empty) (*any.Any, error) {
+func (s systemServer) GetCustomSettings(ctx context.Context, e *emptypb.Empty) (*anypb.Any, error) {
 	log.Println("GetCustomSettings called")
 	//device builders' custom implementation should be placed in here
 
-	return &any.Any{}, nil
+	return &anypb.Any{}, nil
 }
 
 // ApplyCustomSettings Applies device specific custom settings.
-func (s systemServer) ApplyCustomSettings(ctx context.Context, customSettings *any.Any) (*empty.Empty, error) {
+func (s systemServer) ApplyCustomSettings(ctx context.Context, customSettings *anypb.Any) (*emptypb.Empty, error) {
 	log.Println("ApplyCustomSettings called")
 
 	//device builders' custom implementation should be placed in here
 
 	log.Println("custom settings : ", string(customSettings.Value))
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }

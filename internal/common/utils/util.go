@@ -11,9 +11,9 @@ import (
 	systemapi "systemservice/api/siemens_iedge_dmapi_v1"
 	"time"
 
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	DefaultConfigPath = "/opt/limits/default.json"
 )
 
-//Utils Interface has the wrapper of util calls
+// Utils Interface has the wrapper of util calls
 type Utils interface {
 	Commander(command string) ([]byte, error)
 	Uptime() (uint64, error)
@@ -32,36 +32,36 @@ type Utils interface {
 	CPUInfo() ([]cpu.InfoStat, error)
 }
 
-//OsUtils struct for wrappers
+// OsUtils struct for wrappers
 type OsUtils struct{}
 
-//Commander is a wrapper func
+// Commander is a wrapper func
 func (OsUtils) Commander(command string) ([]byte, error) {
 	out, err := exec.Command(shell, "-c", command).Output()
 	return out, err
 }
 
-//Uptime is a wrapper func
+// Uptime is a wrapper func
 func (OsUtils) Uptime() (uint64, error) {
 	return host.Uptime()
 }
 
-//VirtualMemory is a wrapper func
+// VirtualMemory is a wrapper func
 func (OsUtils) VirtualMemory() (*mem.VirtualMemoryStat, error) {
 	return mem.VirtualMemory()
 }
 
-//CPUPercent is a wrapper func
+// CPUPercent is a wrapper func
 func (OsUtils) CPUPercent(interval time.Duration, percpu bool) ([]float64, error) {
 	return cpu.Percent(interval, percpu)
 }
 
-//CPUCounts is a wrapper func
+// CPUCounts is a wrapper func
 func (OsUtils) CPUCounts(logical bool) (int, error) {
 	return cpu.Counts(logical)
 }
 
-//CPUInfo is a wrapper func
+// CPUInfo is a wrapper func
 func (OsUtils) CPUInfo() ([]cpu.InfoStat, error) {
 	return cpu.Info()
 }

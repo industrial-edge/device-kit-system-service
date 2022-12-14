@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Siemens AG
+ * Copyright (c) 2022 Siemens AG
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -9,6 +9,7 @@ package systeminfo
 import (
 	"encoding/json"
 	"errors"
+	"github.com/shirou/gopsutil/v3/cpu"
 	"log"
 	"math"
 	"strconv"
@@ -27,20 +28,20 @@ const (
 	dmidecodeVersion = "dmidecode --string system-product-name"
 )
 
-//SystemInfo is a struct that provides System Info
+// SystemInfo is a struct that provides System Info
 type SystemInfo struct {
 	fs   utils.FileSystem
 	util utils.Utils
 	cfg  *utils.DefaultConfig
 }
 
-//NewSystemInfo to create a new instance of SystemInfo
+// NewSystemInfo to create a new instance of SystemInfo
 func NewSystemInfo(fsVal utils.FileSystem, utVal utils.Utils) *SystemInfo {
 	var systeminfo = SystemInfo{fs: fsVal, util: utVal}
 	return &systeminfo
 }
 
-//GetResourceStats method provides Cpu, Storage, Memory and Uptime Stats
+// GetResourceStats method provides Cpu, Storage, Memory and Uptime Stats
 func (s SystemInfo) GetResourceStats() (*systemapi.Stats, error) {
 	var err error = nil
 
@@ -89,7 +90,7 @@ func (s SystemInfo) getMatchingField(content string, key string, space uint16) (
 	return content, errors.New("key value cannot be found")
 }
 
-//GetFirmwareInfo provides firmwave Version Info
+// GetFirmwareInfo provides firmwave Version Info
 func (s SystemInfo) GetFirmwareInfo() (*systemapi.FirmwareInfo, error) {
 	//Read Firmware Info from file
 	content, err1 := s.getFileContent(firmwareFile)
@@ -105,13 +106,13 @@ func (s SystemInfo) GetFirmwareInfo() (*systemapi.FirmwareInfo, error) {
 	return &systemapi.FirmwareInfo{Version: value}, nil
 }
 
-//GetLimits method provides NFR Limit values via limitprovider
+// GetLimits method provides NFR Limit values via limitprovider
 func (s SystemInfo) GetLimits() (*systemapi.Limits, error) {
 	limitInstance := limitprovider.CreateLimitProvider(s.fs, s.util)
 	return limitInstance.GetLimitContent()
 }
 
-//GetModelNumber provides device model number
+// GetModelNumber provides device model number
 func (s SystemInfo) GetModelNumber() (*systemapi.ModelNumber, error) {
 	var value string
 
@@ -297,7 +298,7 @@ func (s SystemInfo) getCPUStats() (*systemapi.Cpu, error) {
 		errFlag = err
 	} else {
 		if len(retval) > 0 {
-			modelInfo = retval[0].ModelName
+			modelInfo = s.getModelInfo(retval, modelInfo)
 		} else {
 			log.Println("systeminfo:getCpuStats(), No Info value!")
 			modelInfo = "NOTDEFINED"
@@ -311,6 +312,18 @@ func (s SystemInfo) getCPUStats() (*systemapi.Cpu, error) {
 		CoreCount:         int32(coreCount),
 		ModelInfo:         modelInfo}, errFlag
 
+}
+
+// getModelInfo, Added for arm64. The gopsutil library sets this value for the latest cpu core in /proc/cpuinfo on arm devices.
+func (s SystemInfo) getModelInfo(retval []cpu.InfoStat, modelInfo string) string {
+	for i := len(retval) - 1; i >= 0; i-- {
+		if retval[i].ModelName != "" {
+			log.Printf("Model information found for the %d. CPU core.", i+1)
+			modelInfo = retval[i].ModelName
+			break
+		}
+	}
+	return modelInfo
 }
 
 // GetLogFile method returns the path of compressed log file with LogResponse struct
@@ -336,7 +349,7 @@ func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogRes
 	// Check,  if device.name file created  get deviceName, otherwise get device hostname
 	uniqIdentifierForLogFile := ""
 	deviceNameFile := "/var/device.name"
-	deviceNameCommand := "[ -f "+ deviceNameFile +" ]"
+	deviceNameCommand := "[ -f " + deviceNameFile + " ]"
 
 	_, errCheckDevName := s.util.Commander(deviceNameCommand)
 	if errCheckDevName != nil {
@@ -346,14 +359,14 @@ func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogRes
 		outHost, errHost := s.util.Commander(hostnameCommand)
 		if errHost != nil {
 			log.Println("Hostname command run error, ", errHost.Error())
-		}else {
+		} else {
 			uniqIdentifierForLogFile = strings.TrimSuffix(string(outHost), "\n") + "_"
 		}
 
 	} else {
 		deviceNameCommand := "cat " + deviceNameFile
 		outDev, errDev := s.util.Commander(deviceNameCommand)
-		if errDev != nil{
+		if errDev != nil {
 			log.Printf("Error while reading file : %s Error : %s \n", outDev, errDev.Error())
 		} else {
 			log.Println(" device.name file content :", string(outDev))
@@ -374,5 +387,5 @@ func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogRes
 		return nil, errZip
 	}
 
-	return &systemapi.LogResponse{LogPath: strings.TrimSuffix(request.SaveFolderPath, "/") + "/" + logName} , nil
+	return &systemapi.LogResponse{LogPath: strings.TrimSuffix(request.SaveFolderPath, "/") + "/" + logName}, nil
 }
