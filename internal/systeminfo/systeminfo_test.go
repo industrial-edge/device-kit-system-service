@@ -271,6 +271,7 @@ func Test_SystemInfo_GetLogFile_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnZip(t *testing.T) {
@@ -290,13 +291,14 @@ func Test_SystemInfo_GetLogFile_ErrorOnZip(t *testing.T) {
 	s4 := mocks.CmdContainer{CommandVal: []byte("hostname"), CommandErr: nil}
 	tUtil.CommandList = append(tUtil.CommandList, s4)
 
-	s5 := mocks.CmdContainer{CommandVal: []byte("tar -czvf log ..."), CommandErr: errors.New("failed to zip")}
+	s5 := mocks.CmdContainer{CommandVal: []byte("tar -czvf log ..."), CommandErr: errors.New("An error was encountered during the compression process.")}
 	tUtil.CommandList = append(tUtil.CommandList, s5)
 
 	_, err := tsysInfo.GetLogFile(&systemapi.LogRequest{SaveFolderPath: "/tmp/tmp"})
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.Contains(t, err.Error(), "An error was encountered during the compression process.")
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnCatDeviceName(t *testing.T) {
@@ -323,6 +325,7 @@ func Test_SystemInfo_GetLogFile_ErrorOnCatDeviceName(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnPathCheck(t *testing.T) {
@@ -330,13 +333,14 @@ func Test_SystemInfo_GetLogFile_ErrorOnPathCheck(t *testing.T) {
 	_, tUtil, tsysInfo := initialize()
 
 	tUtil.CommandList = make([]mocks.CmdContainer, 0)
-	s1 := mocks.CmdContainer{CommandVal: []byte("[-p /logpath ] check directory"), CommandErr: errors.New("directory doesn't exist")}
+	s1 := mocks.CmdContainer{CommandVal: []byte("[-p /logpath ] check directory"), CommandErr: errors.New("The directory does not exist in the system.")}
 	tUtil.CommandList = append(tUtil.CommandList, s1)
 
 	_, err := tsysInfo.GetLogFile(&systemapi.LogRequest{SaveFolderPath: "/tmp/tmp"})
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.Contains(t, err.Error(), "The directory does not exist in the system.")
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnJournalctl(t *testing.T) {
@@ -347,13 +351,14 @@ func Test_SystemInfo_GetLogFile_ErrorOnJournalctl(t *testing.T) {
 	s1 := mocks.CmdContainer{CommandVal: []byte("[-p /logpath ] check directory"), CommandErr: nil}
 	tUtil.CommandList = append(tUtil.CommandList, s1)
 
-	s2 := mocks.CmdContainer{CommandVal: []byte("journalctl > logs"), CommandErr: errors.New(" journalctl error")}
+	s2 := mocks.CmdContainer{CommandVal: []byte("journalctl > logs"), CommandErr: errors.New("Something went wrong to execute journalctl.")}
 	tUtil.CommandList = append(tUtil.CommandList, s2)
 
 	_, err := tsysInfo.GetLogFile(&systemapi.LogRequest{SaveFolderPath: "/tmp/tmp"})
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.Contains(t, err.Error(), "Something went wrong to execute journalctl.")
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheck(t *testing.T) {
@@ -380,6 +385,7 @@ func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheck(t *testing.T) {
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
 
 func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheckAndHostname(t *testing.T) {
@@ -406,4 +412,5 @@ func Test_SystemInfo_GetLogFile_ErrorOnDeviceNameFileCheckAndHostname(t *testing
 	if err != nil {
 		t.Log(err.Error())
 	}
+	assert.NoError(t, err)
 }
