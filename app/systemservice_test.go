@@ -20,6 +20,7 @@ type tSystemController struct {
 
 type tSystemController2 struct {
 }
+
 func (s tSystemController2) RestartDevice() error {
 	return nil
 }

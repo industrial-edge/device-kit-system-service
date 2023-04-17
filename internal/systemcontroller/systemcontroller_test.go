@@ -97,10 +97,45 @@ func Test_RemoveContent_Success(t *testing.T) {
 	tUtil.CommandList = append(tUtil.CommandList, s1)
 	s2 := mocks.CmdContainer{CommandVal: []byte(""), CommandErr: nil}
 	tUtil.CommandList = append(tUtil.CommandList, s2)
+	s3 := mocks.CmdContainer{CommandVal: []byte(""), CommandErr: nil}
+	tUtil.CommandList = append(tUtil.CommandList, s3)
+	s4 := mocks.CmdContainer{CommandVal: []byte(""), CommandErr: nil}
+	tUtil.CommandList = append(tUtil.CommandList, s4)
 
 	err := controller.RemoveContent()
 	assert.Nil(t, err, "Did not get expected result. Wanted: %q, got: %q", nil, err)
-
 }
 
+func Test_Remove_Success(t *testing.T) {
+	t.Parallel()
+	tUtil := new(mocks.MUtil)
+	tFs := new(mocks.MFS)
+	controller := NewSystemController(tFs, tUtil)
 
+	tUtil.CommandList = make([]mocks.CmdContainer, 0)
+	s1 := mocks.CmdContainer{CommandVal: []byte(""), CommandErr: nil}
+	tUtil.CommandList = append(tUtil.CommandList, s1)
+	s2 := mocks.CmdContainer{CommandVal: []byte(""), CommandErr: nil}
+	tUtil.CommandList = append(tUtil.CommandList, s2)
+
+	removeFileListDuringHardReset := []string{"fake/file", "fake/file2"}
+
+	err := controller.RemoveFiles(removeFileListDuringHardReset)
+	assert.Nil(t, err, "Did not get expected result. Wanted: %q, got: %q", nil, err)
+}
+
+func Test_Remove_ErrorOnDeletingFiles(t *testing.T) {
+	t.Parallel()
+	tUtil := new(mocks.MUtil)
+	tFs := new(mocks.MFS)
+	controller := NewSystemController(tFs, tUtil)
+
+	tUtil.CommandList = make([]mocks.CmdContainer, 0)
+	s1 := mocks.CmdContainer{CommandVal: []byte(""), CommandErr: errors.New("fake/file does not exit.")}
+	tUtil.CommandList = append(tUtil.CommandList, s1)
+
+	removeFileListDuringHardReset := []string{"fake/file", "fake/file2"}
+
+	err := controller.RemoveFiles(removeFileListDuringHardReset)
+	assert.NotNil(t, err, "Did not get expected result. Wanted: %q, got: %q", nil, err)
+}
