@@ -9,6 +9,7 @@ package systeminfo
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math"
 	"strconv"
@@ -380,15 +381,26 @@ func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogRes
 		}
 	}
 
+	// If device name has `/`, it is not supported for file names, it will be replaced with `?`
+	uniqIdentifierForLogFile = strings.ReplaceAll(uniqIdentifierForLogFile, "/", "?")
+	// Single quotes also needs to be escaped since file name in zip creation command will be in between single quotes.
+	uniqIdentifierForLogFile = strings.ReplaceAll(uniqIdentifierForLogFile, "'", `\'`)
+
 	// create timestamp as "YYYYMMDDhhmmss" format
-	logName := "devicelogs_" + uniqIdentifierForLogFile + time.Now().Format("20060102150405") + ".tar.gz"
-	logName = strings.Replace(logName, " ", "", -1)
-	log.Println("logName  :", logName)
+	logIdentifier := strings.ReplaceAll(uniqIdentifierForLogFile, " ", "") + time.Now().Format("20060102150405")
+	logFileName := fmt.Sprintf("devicelogs_%s.tar.gz", logIdentifier)
+	log.Println("logName  :", logFileName)
+
+	logFilePath := strings.TrimSuffix(request.SaveFolderPath, "/") + "/" + logFileName
 	//compress log file and create zip with the help of "tar"  command. Rename the file to "logs" in the archive.
-	zipCommand := "tar -czvf " + strings.TrimSuffix(request.SaveFolderPath, "/") + "/" + logName +
-		" --transform='flags=r;s|" + templogfileName + "|logs|'" +
-		" -C " + templogfileDir + " " + templogfileName + " --remove-files"
+	zipCommand := fmt.Sprintf("tar -czvf $'%s' --transform='flags=r;s|%s|logs|' -C %s %s --remove-files",
+		logFilePath,
+		templogfileName,
+		templogfileDir,
+		templogfileName)
+
 	outZip, errZip := s.util.Commander(zipCommand)
+
 	if errZip != nil {
 		log.Printf("Error %s output : %s, error : %s",
 			zipCommand,
@@ -396,5 +408,5 @@ func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogRes
 		return nil, errZip
 	}
 
-	return &systemapi.LogResponse{LogPath: strings.TrimSuffix(request.SaveFolderPath, "/") + "/" + logName}, nil
+	return &systemapi.LogResponse{LogPath: logFilePath}, nil
 }
