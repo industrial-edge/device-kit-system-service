@@ -1,0 +1,34 @@
+name: Run CI Tests
+on: [push]
+jobs:
+  changes:
+    runs-on: [ubuntu-22.04]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-golang@v1
+        with:
+          version-file: go.mod
+      - name: Check for changes
+        run: |
+          make changes
+  run-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-22.04
+          - macos-12
+          - windows-2022
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-golang@v1
+        with:
+          version-file: go.mod
+      - uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.50
+          skip-cache: true
+      - name: Run Go Test
+        run: |
+          make test

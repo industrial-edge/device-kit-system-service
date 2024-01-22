@@ -82,8 +82,7 @@ As can be seen the json object above, in order to provide a directory to be repo
 Please check our [contribution guideline](CONTRIBUTING.md). 
 
 # Contribution License Agreement
-If you haven't previously signed the [Siemens Contributor License Agreement](https://cla-assistant.io/industrial-edge/) (CLA), the system will automatically prompt you to do so when you submit your Pull Request. This can be conveniently done through the CLA Assistant's online platform.
-Once the CLA is signed, your Pull Request will automatically be cleared and made ready for merging if all other test stages succeed.
+Please check [CLA](Siemens_CLA_1.1.pdf)
 
 # How to be part of Siemens Industrial Edge Ecosystem
 Please check [this](https://new.siemens.com/global/en/products/automation/topic-areas/industrial-edge.html) page to learn more information about Industrial Edge.
