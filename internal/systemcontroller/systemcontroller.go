@@ -8,23 +8,24 @@ package systemcontroller
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
-	clientfactory "systemservice/internal/clientfactory"
+	"systemservice/internal/clientfactory"
+	"systemservice/internal/common"
 	"systemservice/internal/common/utils"
 	"time"
 )
 
-const shell = "bash"
-const systemctl = "systemctl"
-const reboot = "reboot"
-const shutdown = "poweroff"
-const journalctl = "journalctl"
-const dockerDataRootDir = "docker info --format '{{json .DockerRootDir}}'"
-const pathDockerData = "edge-iot-core/Data/edgeresetflag"
-const pathDeviceName = "/var/device.name"
-const pathDeviceId = "/var/device.id"
-const commandOfRemove = "rm -rf"
+const (
+	blank           = " "
+	systemctl       = "systemctl" + blank
+	shutdown        = systemctl + "poweroff"
+	reboot          = systemctl + "reboot"
+	removeCommand   = "rm -rf" + blank
+	dockerDataQuery = "docker info --format '{{json .DockerRootDir}}'"
+	pathDockerData  = "edge-iot-core/Data/edgeresetflag"
+)
 
 // SystemController is the controller utility
 type SystemController struct {
@@ -34,30 +35,14 @@ type SystemController struct {
 
 // NewSystemController to create a new instance of SystemController
 func NewSystemController(fsVal utils.FileSystem, utVal utils.Utils) *SystemController {
-	var systemcontroller = SystemController{fs: fsVal, ut: utVal}
-	return &systemcontroller
-}
-
-// RestartDevice method performs device restart operation
-func (s SystemController) RestartDevice() error {
-	log.Println("systemcontroller:RestartDevice(), Enter")
-	//Call reboot device
-	go func() {
-		time.Sleep(5 * time.Second)
-		log.Println("systemcontroller:RestartDevice(), Restart in Progress... ")
-		command := systemctl + " " + reboot
-		s.ut.Commander(command)
-	}()
-	log.Println("systemcontroller:RestartDevice() Leave")
-	return nil
+	return &SystemController{fs: fsVal, ut: utVal}
 }
 
 // ShutdownDevice method performs device shutdown operation
 func (s SystemController) ShutdownDevice() error {
 	//Call shutdown device
 	log.Println("systemcontroller:ShutdownDevice(), Enter")
-	command := systemctl + " " + shutdown
-	out, err := s.ut.Commander(command)
+	out, err := s.ut.Commander(shutdown)
 
 	if err != nil {
 		log.Printf("systemcontroller:ShutdownDevice(), output: %s error: %s ", string(out), err.Error())
@@ -66,68 +51,88 @@ func (s SystemController) ShutdownDevice() error {
 	return err
 }
 
-// HardReset method performs facroty reset operation
-func (s SystemController) HardReset(ctx context.Context, clients *clientfactory.ClientPack) error {
-	var err error
-	var errflag error
+// RestartDevice method performs device restart operation
+func (s SystemController) RestartDevice() error {
+	log.Println("systemcontroller:RestartDevice(), Enter")
+	// Call reboot device
+	go func() {
+		time.Sleep(5 * time.Second)
+		log.Println("systemcontroller:RestartDevice(), Restart in Progress... ")
 
-	log.Println("All the contents regarding users/applications should be deleted from regarding directories/mountpoints.")
+		output, err := s.ut.Commander(reboot)
+		if err != nil {
+			log.Printf("Error while rebooting device: %s\nOutput: %s", err, string(output))
+			return
+		}
 
-	if err = s.RemoveContent(); err != nil {
-		log.Println("systemcontroller HardReset() RemoveContent Failed, error: ", err.Error())
-	}
+		log.Println("systemcontroller:RestartDevice(), Restart completed successfully")
+	}()
 
-	//Restart Device
-	s.RestartDevice()
-
-	return errflag
+	log.Println("systemcontroller:RestartDevice() Leave")
+	return nil
 }
 
-// RemoveContent removes the edgeresetflag file
-func (s SystemController) RemoveContent() error {
+// HardReset method performs factory reset operation
+func (s SystemController) HardReset(ctx context.Context, clients *clientfactory.ClientPack) error {
+	log.Println("All the contents regarding users/applications should be deleted from regarding directories/mount-points.")
 
-	// Get DataRootDir from 'docker info' output
-	rootDirOfDockerData := []string{}
-	out, errDocker := s.ut.Commander(dockerDataRootDir)
-	if errDocker != nil {
-		log.Printf("docker info can not be queried, output : %s, error : %s",
-			strings.Trim((strings.TrimSuffix(string(out), "\n")), "\""), errDocker.Error())
-		return errDocker
-	}
-	log.Printf("Queried docker info, found DockerRootDir : %s", string(out))
-
-	// Construct the absolute path of file to be removed
-	// removes both "" and \n
-	rootDirOfDockerData = append(rootDirOfDockerData, strings.Trim((strings.TrimSuffix(string(out), "\n")), "\""))
-	rootDirOfDockerData = append(rootDirOfDockerData, pathDockerData)
-
-	absolutePathOfTheDockerData := strings.Join(rootDirOfDockerData, "/")
-
-	filesToBeRemoved := []string{absolutePathOfTheDockerData, pathDeviceName, pathDeviceId}
-	log.Printf("Will be removed at the end of the HardReset : %s, %s, %s ", absolutePathOfTheDockerData, pathDeviceName, pathDeviceId)
-
-	// Remove Files
-	err := s.RemoveFiles(filesToBeRemoved)
-	if err != nil {
+	if err := s.RemoveContent(); err != nil {
+		log.Printf("systemcontroller HardReset() RemoveContent Failed, error: %s", err.Error())
 		return err
 	}
 
+	// Restart Device
+	if err := s.RestartDevice(); err != nil {
+		log.Printf("systemcontroller HardReset() RestartDevice Failed, error: %s", err.Error())
+		return err
+	}
+
+	log.Println("HardReset completed successfully.")
 	return nil
 }
 
-func (s SystemController) RemoveFiles(removeList []string) error {
+// RemoveContent removes specific files.
+func (s SystemController) RemoveContent() error {
+	dockerRootDir, err := s.GetDockerRootDir()
+	if err != nil {
+		log.Printf("Error occured: DockerRootDir could not be obtained: %s", err)
+		return err
+	}
 
-	//Remove files on list
-	for _, removeElement := range removeList {
-		commandRemoveFile := commandOfRemove + " " + removeElement
-		output, errRemoveFile := s.ut.Commander(commandRemoveFile)
-		if errRemoveFile != nil {
-			log.Printf("%s can not be removed, output : %s, error : %s", removeElement, string(output), errRemoveFile.Error())
-			return errRemoveFile
+	// Construct the absolute path of the file to be removed
+	absolutePathOfDockerData := fmt.Sprintf("%s/%s", dockerRootDir, pathDockerData)
+	filesToRemove := common.GetMandatoryPaths()
+	filesToRemove = append(filesToRemove, absolutePathOfDockerData)
+
+	// Remove specific files
+	for _, file := range filesToRemove {
+		if err := s.RemoveFile(file); err != nil {
+			log.Printf("Error occured: '%s' could not be removed: %s", file, err)
+			return err
 		}
-
-		log.Printf("%s is removed succesfully", removeElement)
 	}
 
 	return nil
+}
+
+// RemoveFile removes a file
+func (s SystemController) RemoveFile(filePath string) error {
+	removeCommand := removeCommand + filePath
+	output, err := s.ut.Commander(removeCommand)
+	if err != nil {
+		log.Printf("Error occured: %s encountered an error during removal, output: %s, error: %s", filePath, string(output), err)
+		return err
+	}
+
+	log.Printf("%s has been successfully removed", filePath)
+	return nil
+}
+
+// GetDockerRootDir gets the Docker root directory
+func (s SystemController) GetDockerRootDir() (string, error) {
+	out, err := s.ut.Commander(dockerDataQuery)
+	if err != nil {
+		return "", err
+	}
+	return strings.Trim(strings.TrimSuffix(string(out), "\n"), "\""), nil
 }

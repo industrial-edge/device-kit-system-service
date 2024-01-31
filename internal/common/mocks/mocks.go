@@ -19,8 +19,8 @@ type MUtil struct {
 	CommandCnt     int
 	CommandList    []CmdContainer
 	UptimeVal      uint64
-	UptitmeErr     error
-	VirtualmemStat mem.VirtualMemoryStat
+	UptimeErr      error
+	VirtualMemStat mem.VirtualMemoryStat
 	VirtualMemErr  error
 	CPUPercErr     error
 	CPUCountErr    error
@@ -44,16 +44,16 @@ func (util *MUtil) Commander(command string) ([]byte, error) {
 
 // Uptime method is mock of host.Uptime
 func (util *MUtil) Uptime() (uint64, error) {
-	return util.UptimeVal, util.UptitmeErr
+	return util.UptimeVal, util.UptimeErr
 }
 
 // VirtualMemory method is mock of mem.VirtualMemory
 func (util *MUtil) VirtualMemory() (*mem.VirtualMemoryStat, error) {
-	return &util.VirtualmemStat, util.VirtualMemErr
+	return &util.VirtualMemStat, util.VirtualMemErr
 }
 
 // CPUPercent method is mock of cpu.Percent
-func (util *MUtil) CPUPercent(interval time.Duration, percpu bool) ([]float64, error) {
+func (util *MUtil) CPUPercent(interval time.Duration, perCpu bool) ([]float64, error) {
 	return util.CPUPercVal, util.CPUPercErr
 }
 
@@ -73,7 +73,7 @@ type MFS struct {
 	ReadFileList   []ReadFileContainer
 	OpenFileErr    error
 	OpenFileHandle *os.File
-	WrtieFileErr   error
+	WriteFileErr   error
 	StatVal        os.FileInfo
 	StatErr        error
 }
@@ -97,7 +97,7 @@ func (fs *MFS) ReadFile(filename string) ([]byte, error) {
 
 // WriteFile method is mock of ioutil.WriteFile
 func (fs *MFS) WriteFile(filename string, data []byte, perm os.FileMode) error {
-	return fs.WrtieFileErr
+	return fs.WriteFileErr
 }
 
 // Stat method is mock of os.Stat
