@@ -109,7 +109,7 @@ func Test_GetUptimeVerify(t *testing.T) {
 	t.Parallel()
 	_, tUtil, tsysInfo := initialize()
 
-	tUtil.UptitmeErr = nil
+	tUtil.UptimeErr = nil
 	tUtil.UptimeVal = 60
 	uptime, _ := tsysInfo.getUpTime()
 	assert.Equal(t, uptime, "0 days, 0 hours, 1 minutes", "Did not get expected result. Wanted: %q, got: %q", "0 days, 0 hours, 1 minutes", uptime)
@@ -129,7 +129,7 @@ func Test_GetUptimeFailure(t *testing.T) {
 	t.Parallel()
 	_, tUtil, tsysInfo := initialize()
 
-	tUtil.UptitmeErr = errors.New("Failed to GetUpTime")
+	tUtil.UptimeErr = errors.New("Failed to GetUpTime")
 	uptime, err := tsysInfo.getUpTime()
 
 	assert.Equal(t, uptime, "0 days, 0 hours, 0 minutes", "Did not get expected result. Wanted: %q, got: %q", "0 days, 0 hours, 0 minutes", uptime)
@@ -152,7 +152,7 @@ func Test_GetMemoryStatVerifyWithProperStats(t *testing.T) {
 	t.Parallel()
 	_, tUtil, tsysInfo := initialize()
 	tUtil.VirtualMemErr = nil
-	tUtil.VirtualmemStat = mem.VirtualMemoryStat{
+	tUtil.VirtualMemStat = mem.VirtualMemoryStat{
 		Total:       100000000,
 		Available:   10000000,
 		Used:        80000000,
