@@ -38,7 +38,7 @@ nfpms:
   homepage: https://github.com/industrial-edge/device-kit-system-service
   maintainer: https://github.com/industrial-edge/device-kit-system-service
   description: System Service is gRPC based System resource tracker and system controller.
-  license: Copyright (c) 2023 Siemens AG
+  license: Copyright (c) Siemens 2023
 
   # Packages to be generated.
   formats:
