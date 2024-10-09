@@ -2,10 +2,11 @@ package systeminfo
 
 import (
 	"errors"
-	"github.com/shirou/gopsutil/v3/cpu"
 	systemapi "systemservice/api/siemens_iedge_dmapi_v1"
 	"systemservice/internal/common/mocks"
 	"testing"
+
+	"github.com/shirou/gopsutil/v3/cpu"
 
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,8 @@ PRETTY_NAME=Ubuntu 18.04.4 LTS`
 var TestContentNoNewLineFirmwareInfo = `VARIANT="IEMS_0.0.9-dev_x86"`
 
 var SystemProductName = "VMware Virtual Platform"
+var DmidecodeCpuMaxSpeed = "dmidecode -t processor | grep 'Max Speed'"
+
 
 const testContentProperJSON = `
 {
@@ -169,22 +172,35 @@ func Test_GetMemoryStatVerifyWithProperStats(t *testing.T) {
 	assert.Equal(t, memoryStat.PercentageFreeSpace, float32(10), "Did not get expected result. Wanted: %q, got: %q", float32(10), memoryStat.TotalSpaceInGB)
 }
 
-func Test_GetCpuStatsFailure(t *testing.T) {
+func Test_GetCpuStatsFailures(t *testing.T) {
 	//Prepare Content
 	t.Parallel()
 	_, tUtil, tsysInfo := initialize()
 	tUtil.CPUPercErr = errors.New("Failed to get CpuPercentage")
 	tUtil.CPUCountErr = errors.New("Failed to get CpuCount")
 	tUtil.CPUInfoErr = errors.New("Failed to get CpuInfo")
+	tUtil.IdleTimeErr = errors.New("Failed to get CpuIdleTime")
+	tUtil.FrequencyErr = errors.New("Failed to get CpuFrequency")
 
+	tUtil.CommandList = make([]mocks.CmdContainer, 0)
+	s1 := mocks.CmdContainer{CommandVal: []byte("Max Speed: 30000 MHz"), CommandErr: tUtil.FrequencyErr}
+	tUtil.CommandList = append(tUtil.CommandList, s1)
+	
 	_, err := tsysInfo.getCPUStats()
 	assert.NotNil(t, err, "Did not get expected result.  got: %q", err)
+}
+
+func Test_GetCpuStatsFailure(t *testing.T){
+	t.Parallel()
+	_, tUtil, tsysInfo := initialize()
+	
+	tUtil.CommandList = make([]mocks.CmdContainer, 0)
+	s1 := mocks.CmdContainer{CommandVal: []byte(SystemProductName), CommandErr: nil}
+	tUtil.CommandList = append(tUtil.CommandList, s1)
 
 	//Set only one Failure
-	tUtil.CPUCountErr = nil
-	tUtil.CPUInfoErr = nil
-
-	_, err = tsysInfo.getCPUStats()
+	tUtil.CPUPercErr = errors.New("Failed to get CpuPercentage")
+	_, err := tsysInfo.getCPUStats()
 	assert.NotNil(t, err, "Did not get expected result.  got: %q", err)
 }
 
@@ -196,7 +212,40 @@ func Test_GetCpuStatsSuccess(t *testing.T) {
 	newRes := append(res, cpu.InfoStat{ModelName: "test"})
 	tUtil.CPUInfoVal = newRes
 
+	tUtil.CommandList = make([]mocks.CmdContainer, 0)
+	s1 := mocks.CmdContainer{CommandVal: []byte(SystemProductName), CommandErr: nil}
+	tUtil.CommandList = append(tUtil.CommandList, s1)
+
 	_, err := tsysInfo.getCPUStats()
+	assert.Nil(t, err, "Did not get expected result.  got: %q", err)
+}
+
+func Test_getCpuFrequency(t *testing.T) {
+	//Prepare Content
+	t.Parallel()
+	_, tUtil, tsysInfo := initialize()
+
+	tUtil.CommandList = make([]mocks.CmdContainer, 0)
+	s1 := mocks.CmdContainer{CommandVal: []byte(DmidecodeCpuMaxSpeed), CommandErr: nil}
+	tUtil.CommandList = append(tUtil.CommandList, s1)
+
+	frequency, err := tsysInfo.getCpuFrequency()
+
+	assert.Nil(t, err, "Did not get expected result. Wanted: %q, got: %q", nil, err)
+	assert.Equal(t, frequency, float64(0), "Did not get expected result. Wanted: %q, got: %q", frequency, float64(0))
+}
+
+func Test_getCpuIdleTime(t *testing.T) {
+	//Prepare Content
+	t.Parallel()
+	_, tUtil, tsysInfo := initialize()
+	idle := 123.99
+	res, _ := tUtil.CPUIdleTime()
+	newRes := append(res, cpu.TimesStat{Idle: idle})
+	tUtil.IdleTime = newRes
+
+	result, err := tsysInfo.getCpuIdleTime()
+	assert.Equal(t, idle, result)
 	assert.Nil(t, err, "Did not get expected result.  got: %q", err)
 }
 

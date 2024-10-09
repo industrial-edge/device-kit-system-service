@@ -19,7 +19,7 @@ build: clean server	## Build both api, server (maybe clients)
 .PHONY: test
 test:	## Run unit tests
 	$(info Running unit tests...)
-	@go test -cover -short ${PKG_LIST}
+	@go test -gcflags=all=-l -cover -short ${PKG_LIST}
 
 .PHONY: vet
 vet:
@@ -38,11 +38,11 @@ fmt:
 
 race: dep ## Run data race detector
 	$(info Running data race detector...)
-	@go test -race -short ${PKG_LIST}
+	@go test -gcflags=all=-l -race -short ${PKG_LIST}
 
 msan: dep ## Run memory sanitizer
 	$(info Running memory sanitizer...)
-	@go test -msan -short ${PKG_LIST}
+	@go test -gcflags=all=-l -msan -short ${PKG_LIST}
 
 coverage: ## Generate global code coverage report
 	$(info Generating global code coverage report...)

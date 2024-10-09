@@ -3,7 +3,7 @@
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
- 
+
 syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "google/protobuf/any.proto";
@@ -32,10 +32,12 @@ message Resource{
 }
 // Cpu type contains Cpu utilization at the current moment.
 message Cpu{
-    float usedCpuPercentage =1; // Percentage of used CPU e.g: 20.0
-    float freeCpuPercentage =2; // Percentage of available CPU e.g: 80.0
-    int32 coreCount =3; // Total available core count for CPU.e.g  2C/4T CPU value will be 4
-    string modelInfo =4; // intel x64 etc..
+     float usedCpuPercentage =1; // Percentage of used CPU e.g: 20.0
+     float freeCpuPercentage =2; // Percentage of available CPU e.g: 80.0
+     int32 coreCount =3; // Total available core count for CPU.e.g  2C/4T CPU value will be 4
+     string modelInfo =4; // intel x64 etc..
+     double idleTime =5;  // Idle time of CPU eg: 3662.50 (in seconds)
+     double frequency =6;   // Frequency of CPU eg: 2495.999 (in MHz)
 }
 // System Utilization type. Cpu, storage and memory utilization.
 message Stats{
@@ -43,7 +45,7 @@ message Stats{
     repeated Resource storageDevices=2; // StorageDevices array of Resource type.
     Resource memory =3; // RAM Utilization Information
     string upTime =4; // Elapsed time since the device is started.
-}
+}  
 
 // System Limits for the EdgeRuntime.
 message Limits{
@@ -61,30 +63,30 @@ message LogRequest{
 message LogResponse{
     string logPath =1; // Full file path for collected log archive.
 }
-
+ 
 // System service ,uses a UNIX Domain Socket "/var/run/devicemodel/system.sock" for GRPC communication.
 // protoc  generates both client and server instance for this Service.
 // GRPC Status codes : https://developers.google.com/maps-booking/reference/grpc-api/status_codes .
 service SystemService {
-
+    
     //Restarts the device
     rpc RestartDevice(google.protobuf.Empty) returns(google.protobuf.Empty);
-
+    
     //ShutsDown the device.
     rpc ShutdownDevice(google.protobuf.Empty) returns(google.protobuf.Empty);
-
-    // Performs host side actions in addition to edge-core for hard reset. e.g: cleaning hard-reset flag(mandatory) ,custom device builder steps(optional) and finally reboots the system(mandatory).
+    
+    // Performs host side actions in addition to edge-core for hard reset. e.g: cleaning hard-reset flag(mandatory) ,custom device builder steps(optional) and finally reboots the system(mandatory). 
     rpc HardReset(google.protobuf.Empty) returns(google.protobuf.Empty);
-
-    //Returns model number (mlfb) for siemens or any type model for 3rd party vendors.
+ 
+	//Returns model number (mlfb) for siemens or any type model for 3rd party vendors.
     rpc GetModelNumber(google.protobuf.Empty) returns(ModelNumber);
-
-    //Returns firmware information of currently installed firmware
+	
+	//Returns firmware information of currently installed firmware
     rpc GetFirmwareInfo(google.protobuf.Empty) returns(FirmwareInfo);
-
+    
     //Returns current Cpu, Memory, Uptime and Storage usage
     rpc GetResourceStats(google.protobuf.Empty) returns(Stats);
-
+    
     //Returns limits for how many applications and how much cpu, ram and storage should be available for applications.
     rpc GetLimits(google.protobuf.Empty) returns(Limits);
 
@@ -93,9 +95,9 @@ service SystemService {
 
     //Applies device specific custom settings.
     rpc ApplyCustomSettings(google.protobuf.Any) returns(google.protobuf.Empty);
-
-    //Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive.
+    
+    //Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. 
     rpc GetLogFile(LogRequest) returns(LogResponse);
 
-
+  
 }

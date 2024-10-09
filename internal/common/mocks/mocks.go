@@ -28,6 +28,10 @@ type MUtil struct {
 	CPUPercVal     []float64
 	CPUCountVal    int
 	CPUInfoVal     []cpu.InfoStat
+	IdleTime       []cpu.TimesStat
+	IdleTimeErr    error
+	Frequency      float64
+	FrequencyErr   error
 }
 
 // CmdContainer holds the Command and error list for the mock command method
@@ -65,6 +69,16 @@ func (util *MUtil) CPUCounts(logical bool) (int, error) {
 // CPUInfo method is mock of cpu.CpuInfo
 func (util *MUtil) CPUInfo() ([]cpu.InfoStat, error) {
 	return util.CPUInfoVal, util.CPUInfoErr
+}
+
+// CPUIdleTime method is mock of cpu.IdleTime
+func (util *MUtil) CPUIdleTime() ([]cpu.TimesStat, error) {
+	return util.IdleTime, util.IdleTimeErr
+}
+
+// CPUFrequency method is mock of cpu.Frequency
+func (util *MUtil) CPUFrequency() (float64, error) {
+	return util.Frequency, util.FrequencyErr
 }
 
 // MFS represents Mocked File System

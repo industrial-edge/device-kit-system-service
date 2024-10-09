@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 	systemapi "systemservice/api/siemens_iedge_dmapi_v1"
@@ -25,10 +26,9 @@ import (
 const (
 	firmwareFile = "/etc/os-release"
 	versionKEY   = "VARIANT="
-	//in order to get a proper cpu usage at least we need to run this command twice (!NOT IN USE Right Now)
-	cpuUsage         = "top -b -n2 | grep Cpu"
-	dmidecodeVersion = "dmidecode --string system-product-name"
-	templogfileDir   = "/tmp"
+	dmidecodeVersion     = "dmidecode --string system-product-name"
+	templogfileDir       = "/tmp"
+	dmidecodeCpuMaxSpeed = "dmidecode -t processor | grep 'Max Speed'"
 )
 
 // SystemInfo is a struct that provides System Info
@@ -308,13 +308,77 @@ func (s SystemInfo) getCPUStats() (*systemapi.Cpu, error) {
 		}
 	}
 
+	//get idle time information
+	idleTime, errIdleTime := s.getCpuIdleTime()
+	if errIdleTime != nil {
+		log.Println("systeminfo:getCpuIdleTime(), Cannot Read cpu.Times!, err: ", errIdleTime)
+		errFlag = errIdleTime
+	}
+
+	//get frequency information
+	frequency, errFrequency := s.getCpuFrequency()
+	if errFrequency != nil {
+		log.Println("systeminfo:CPUFrequency(), Cannot Read cpu.Info!, err: ", errFrequency)
+		errFlag = errFrequency
+	}
+
 	log.Println("systeminfo:getCpuStats(), Model Info: ", modelInfo)
 
 	return &systemapi.Cpu{UsedCpuPercentage: usedCPUPercentage,
 		FreeCpuPercentage: freeCPUPercentage,
 		CoreCount:         int32(coreCount),
-		ModelInfo:         modelInfo}, errFlag
+		ModelInfo:         modelInfo,
+		IdleTime:          idleTime,
+		Frequency:         frequency}, errFlag
+}
 
+// getCpuFrequency returns the maximum value of cpu frequency from path cpufreq/cpuinfo_max_freq
+func (s SystemInfo) getCpuFrequency() (float64, error) {
+	maxSpeed := 0.0
+
+	// Execute the dmidecode command
+	out, err := s.util.Commander(dmidecodeCpuMaxSpeed)
+	if err != nil {
+		log.Println("systeminfo:getCpuFrequency(), cannot read Max Speed err:", err)
+		return 0, err
+	} 
+
+	// Process the dmidecode output
+	re := regexp.MustCompile(`Max Speed: (\d+) MHz`)
+	matches := re.FindAllStringSubmatch(string(out), -1)
+
+	// Find the max speed for each match
+	for _, match := range matches {
+		if len(match) == 2 {
+			speed, err := strconv.ParseFloat(match[1], 64)
+			if err != nil {
+				log.Println("systeminfo:getCpuFrequency(), error parsing speed:", err)
+				return 0, err
+			}
+			if speed > maxSpeed {
+				maxSpeed = speed
+			}
+		}
+	}
+
+	return maxSpeed, nil
+}
+
+// getCpuIdleTime returns the aggregated idle time for the cpu from /proc/stat
+func (s SystemInfo) getCpuIdleTime() (float64, error) {
+	var overallIdleTime float64
+	if retval, err := s.util.CPUIdleTime(); err != nil {
+		log.Println("systeminfo:getCpuIdleTime(), Cannot Read cpu.Times!, err: ", err)
+		return 0, err
+	} else {
+		if len(retval) > 0 {
+			overallIdleTime = retval[0].Idle
+		} else {
+			log.Println("systeminfo:getCpuIdleTime(), No IdleTime value!")
+			return 0, nil
+		}
+	}
+	return overallIdleTime, nil
 }
 
 // getModelInfo, Added for arm64. The gopsutil library sets this value for the latest cpu core in /proc/cpuinfo on arm devices.

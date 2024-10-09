@@ -30,6 +30,7 @@ type Utils interface {
 	CPUPercent(interval time.Duration, percpu bool) ([]float64, error)
 	CPUCounts(logical bool) (int, error)
 	CPUInfo() ([]cpu.InfoStat, error)
+	CPUIdleTime() ([]cpu.TimesStat, error)
 }
 
 // OsUtils struct for wrappers
@@ -65,6 +66,12 @@ func (OsUtils) CPUCounts(logical bool) (int, error) {
 func (OsUtils) CPUInfo() ([]cpu.InfoStat, error) {
 	return cpu.Info()
 }
+
+// CPUIdleTime is a wrapper func
+func (OsUtils) CPUIdleTime() ([]cpu.TimesStat, error) {
+	return cpu.Times(false)
+}
+
 
 // DefaultConfig stores embedded objects inside default.json
 type DefaultConfig struct {
