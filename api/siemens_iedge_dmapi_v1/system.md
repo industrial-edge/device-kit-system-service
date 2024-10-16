@@ -35,6 +35,8 @@ Cpu type contains Cpu utilization at the current moment.
 | freeCpuPercentage | [float](#float) |  | Percentage of available CPU e.g: 80.0 |
 | coreCount | [int32](#int32) |  | Total available core count for CPU.e.g 2C/4T CPU value will be 4 |
 | modelInfo | [string](#string) |  | intel x64 etc.. |
+| idleTime | [double](#double) |  | Idle time of CPU eg: 3662.50 (in seconds) |
+| frequency | [double](#double) |  | Frequency of CPU eg: 2495.999 (in MHz) |
 
 
 

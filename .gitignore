@@ -9,3 +9,4 @@ build/package/dist**
 **/bin**
 build/package/coverage_global.txt
 build/package/coverage.html
+.cache/*

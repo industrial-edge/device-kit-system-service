@@ -7,7 +7,41 @@ The IE Device Kit API is based on gRPC which provides a modern intermediate proc
 Purpose of these repositories is to share reference implementation of IE Device Kit APIs. You can use existing implementation or adapt it based on your needs.
 # IEDK System Service
 
-System Service is a gRPC & Go based system resource tracker and system controller. It also includes a console application that shows the system status -`System Resource Stats`, `Model Number`, `System Limit Values`- of devices and a demo client for controlling -`Shutdown`, `Restart`, `Hard Reset`- device.
+System Service is a gRPC & Go based system resource tracker and system controller. It also includes a console application that shows the system status -`System Resource Stats`, `Model Number`, `System Limit Values`- of devices and a demo client for controlling device as following;
+
+```bash
+
+    //Restarts the device
+    rpc RestartDevice(google.protobuf.Empty) returns(google.protobuf.Empty);
+    
+    //ShutsDown the device.
+    rpc ShutdownDevice(google.protobuf.Empty) returns(google.protobuf.Empty);
+    
+    // Performs host side actions in addition to edge-core for hard reset. e.g: cleaning hard-reset flag(mandatory) ,custom device builder steps(optional) and finally reboots the system(mandatory). 
+    rpc HardReset(google.protobuf.Empty) returns(google.protobuf.Empty);
+ 
+	//Returns model number (mlfb) for siemens or any type model for 3rd party vendors.
+    rpc GetModelNumber(google.protobuf.Empty) returns(ModelNumber);
+	
+	//Returns firmware information of currently installed firmware
+    rpc GetFirmwareInfo(google.protobuf.Empty) returns(FirmwareInfo);
+    
+    //Returns current Cpu, Memory, Uptime and Storage usage
+    rpc GetResourceStats(google.protobuf.Empty) returns(Stats);
+    
+    //Returns limits for how many applications and how much cpu, ram and storage should be available for applications.
+    rpc GetLimits(google.protobuf.Empty) returns(Limits);
+
+    //Returns device specific custom settings.
+    rpc GetCustomSettings(google.protobuf.Empty) returns(google.protobuf.Any);
+
+    //Applies device specific custom settings.
+    rpc ApplyCustomSettings(google.protobuf.Any) returns(google.protobuf.Empty);
+    
+    //Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. 
+    rpc GetLogFile(LogRequest) returns(LogResponse);
+
+```
 
 ## Overview
 
