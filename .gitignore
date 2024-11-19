@@ -10,3 +10,4 @@ build/package/dist**
 build/package/coverage_global.txt
 build/package/coverage.html
 .cache/*
+.gitlab/*

@@ -29,6 +29,9 @@ message Resource{
     float usedSpaceInGB =3; // Used space of storage device in Gigabytes e.g: 23.2
     float percentageFreeSpace =4; // Percentage of available space e.g: 3.5
     float percentageUsedSpace =5; // Percentage of used space e.g: 96.5
+    string diskType =6; // Type of disk eg: "HDD" or "SSD"
+    float diskTotalReadSectorsInMB =7; // Total number of sectors read successfully in Megabytes e.g: 58.9
+    float diskTotalWriteSectorsInMB =8; // Total number of sectors written successfully in Megabytes e.g: 32.7
 }
 // Cpu type contains Cpu utilization at the current moment.
 message Cpu{
