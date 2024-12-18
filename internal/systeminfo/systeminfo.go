@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	firmwareFile = "/etc/os-release"
-	versionKEY   = "VARIANT="
+	firmwareFile         = "/etc/os-release"
+	versionKEY           = "VARIANT="
 	dmidecodeVersion     = "dmidecode --string system-product-name"
 	templogfileDir       = "/tmp"
 	dmidecodeCpuMaxSpeed = "dmidecode -t processor | grep 'Max Speed'"
@@ -204,19 +204,28 @@ func (s SystemInfo) getStorageStats() []*systemapi.Resource {
 	//log.Printf("systeminfo:getStorageStats(), path to be monitored: %s", *s.cfg)
 	log.Println("systeminfo:getStorageStats(), path to be monitored: ", s.cfg.MonitoredStorage.Path)
 
-	diskSt := utils.DiskUsage(s.cfg.MonitoredStorage.Path)
+	diskSt, err := utils.DiskUsage(s.cfg.MonitoredStorage.Path)
+	if err != nil {
+		log.Printf("systeminfo:getStorageStats(), DiskUsage() returned error %v", err)
+	}
 	totalSpaceInGb := float32(float64(diskSt.All) / float64(utils.GB))
 	freeSpaceInGb := float32(float64(diskSt.Avail) / float64(utils.GB))
 	usedSpaceInGb := float32(float64(diskSt.Used) / float64(utils.GB))
 	percentageFreeSpace := (freeSpaceInGb * 100) / totalSpaceInGb
 	percentageUsedSpace := (usedSpaceInGb * 100) / totalSpaceInGb
+	diskType := diskSt.DiskType
+	totalDiskReadInMB := float32(diskSt.DiskTotalReadSectors) / float32(utils.MB)
+	totalDiskWriteInMB := float32(diskSt.DiskTotalWriteSectors) / float32(utils.MB)
 
 	return []*systemapi.Resource{{
-		TotalSpaceInGB:      totalSpaceInGb,
-		FreeSpaceInGB:       freeSpaceInGb,
-		UsedSpaceInGB:       usedSpaceInGb,
-		PercentageFreeSpace: percentageFreeSpace,
-		PercentageUsedSpace: percentageUsedSpace,
+		TotalSpaceInGB:            totalSpaceInGb,
+		FreeSpaceInGB:             freeSpaceInGb,
+		UsedSpaceInGB:             usedSpaceInGb,
+		PercentageFreeSpace:       percentageFreeSpace,
+		PercentageUsedSpace:       percentageUsedSpace,
+		DiskType:                  diskType,
+		DiskTotalReadSectorsInMB:  totalDiskReadInMB,
+		DiskTotalWriteSectorsInMB: totalDiskWriteInMB,
 	}}
 }
 
@@ -341,7 +350,7 @@ func (s SystemInfo) getCpuFrequency() (float64, error) {
 	if err != nil {
 		log.Println("systeminfo:getCpuFrequency(), cannot read Max Speed err:", err)
 		return 0, err
-	} 
+	}
 
 	// Process the dmidecode output
 	re := regexp.MustCompile(`Max Speed: (\d+) MHz`)

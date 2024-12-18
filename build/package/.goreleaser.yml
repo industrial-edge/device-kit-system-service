@@ -47,6 +47,7 @@ nfpms:
 # Packages your package depends on.
   dependencies:
     - dmidecode
+    - util-linux (>=2.33)
 
   contents:
     - src: "dm-system.service"
