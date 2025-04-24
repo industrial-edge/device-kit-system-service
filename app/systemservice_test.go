@@ -1,3 +1,9 @@
+/*
+ * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
+ * Licensed under the MIT license
+ * See LICENSE file in the top-level directory
+ */
+
 package app
 
 import (
@@ -62,6 +68,26 @@ func (s tSystemInfo) GetResourceStats() (*v1.Stats, error) {
 }
 func (s tSystemInfo) GetLogFile(request *v1.LogRequest) (*v1.LogResponse, error) {
 	return &v1.LogResponse{LogPath: request.SaveFolderPath + "/logs.tar.gz"}, nil
+}
+
+type MockHostnameManager struct {
+	hostname   string
+	shouldFail bool
+}
+
+func (m *MockHostnameManager) GetHostname() (string, error) {
+	if m.shouldFail {
+		return "", errors.New("Failed to get hostname")
+	}
+	return m.hostname, nil
+}
+
+func (m *MockHostnameManager) UpdateHostname(hostname string) error {
+	if m.shouldFail {
+		return errors.New("Failed to update hostname")
+	}
+	m.hostname = hostname
+	return nil
 }
 
 func Test_VerifyArgsForStartGRPC_WithLessArgs(t *testing.T) {
@@ -143,6 +169,7 @@ func initializeRPCDatas() (*MainApp, context.Context, *emptypb.Empty) {
 	//inject new struct
 	tApp.serverInstance.IsysController = tSystemController{}
 	tApp.serverInstance.IsysInfo = tSystemInfo{}
+	tApp.serverInstance.IhostnameController = &MockHostnameManager{hostname: "initial-hostname"}
 
 	tApp.StartApp()
 
@@ -318,5 +345,73 @@ func Test_ApplyCustomSettings(t *testing.T) {
 		t.Fail()
 	}
 	//Kill the goroutine
+	tApp.done <- true
+}
+
+func TestGetHostname(t *testing.T) {
+	t.Parallel()
+	tApp, dummyctx, dummyEmpty := initializeRPCDatas()
+
+	resp, err := tApp.serverInstance.GetHostname(dummyctx, dummyEmpty)
+	if err != nil {
+		t.Fatalf("GetHostname() error = %v", err)
+	}
+
+	assert.Equal(t, "initial-hostname", resp.Name, "GetHostname() = %v, want %v", resp.Name, "initial-hostname")
+
+	// Kill the goroutine
+	tApp.done <- true
+}
+
+func TestSetHostname(t *testing.T) {
+	t.Parallel()
+	tApp, dummyctx, _ := initializeRPCDatas()
+
+	newHostname := "new-hostname"
+	req := &v1.Hostname{Name: newHostname}
+
+	_, err := tApp.serverInstance.UpdateHostname(dummyctx, req)
+	if err != nil {
+		t.Fatalf("SetHostname() error = %v", err)
+	}
+
+	// Check if the new hostname was set correctly
+	currentHostname, err := tApp.serverInstance.IhostnameController.GetHostname()
+	if err != nil {
+		t.Fatalf("failed to get current hostname: %v", err)
+	}
+
+	assert.Equal(t, newHostname, currentHostname, "current hostname = %v, want %v", currentHostname, newHostname)
+
+	// Kill the goroutine
+	tApp.done <- true
+}
+
+func TestGetHostnameError(t *testing.T) {
+	t.Parallel()
+	tApp, dummyctx, dummyEmpty := initializeRPCDatas()
+	tApp.serverInstance.IhostnameController = &MockHostnameManager{shouldFail: true}
+
+	_, err := tApp.serverInstance.GetHostname(dummyctx, dummyEmpty)
+	assert.NotNil(t, err, "Expected error but got nil")
+	assert.Contains(t, err.Error(), "failed to get hostname", "Did not get expected result. expected: %q got: %q", "failed to get hostname", err.Error())
+
+	// Kill the goroutine
+	tApp.done <- true
+}
+
+func TestSetHostnameError(t *testing.T) {
+	t.Parallel()
+	tApp, dummyctx, _ := initializeRPCDatas()
+	tApp.serverInstance.IhostnameController = &MockHostnameManager{shouldFail: true}
+
+	newHostname := "new-hostname"
+	req := &v1.Hostname{Name: newHostname}
+
+	_, err := tApp.serverInstance.UpdateHostname(dummyctx, req)
+	assert.NotNil(t, err, "Expected error but got nil")
+	assert.Contains(t, err.Error(), "failed to update hostname", "Did not get expected result. expected: %q got: %q", "failed to update hostname", err.Error())
+
+	// Kill the goroutine
 	tApp.done <- true
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Siemens 2022
+ * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -10,11 +10,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/protobuf/types/known/anypb"
 	"os"
 	"os/user"
 	"strconv"
 	"sync"
+
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"log"
 	"net"
@@ -22,6 +23,8 @@ import (
 	v1 "systemservice/api/siemens_iedge_dmapi_v1"
 	clientfct "systemservice/internal/clientfactory"
 	"systemservice/internal/common/utils"
+	"systemservice/internal/hostnamecontroller"
+	"systemservice/internal/hostnamecontroller/hostnameservice"
 	sysController "systemservice/internal/systemcontroller"
 	sysInfo "systemservice/internal/systeminfo"
 
@@ -39,9 +42,10 @@ type DeviceModelService interface {
 
 type systemServer struct {
 	v1.UnimplementedSystemServiceServer
-	IsysController systemControllerAPI
-	IsysInfo       systemInfoAPI
-	Clients        *clientfct.ClientPack
+	IsysController      systemControllerAPI
+	IsysInfo            systemInfoAPI
+	Clients             *clientfct.ClientPack
+	IhostnameController hostnameControllerAPI
 	sync.Mutex
 }
 
@@ -65,21 +69,40 @@ type systemControllerAPI interface {
 	HardReset(context.Context, *clientfct.ClientPack) error
 }
 
+type hostnameControllerAPI interface {
+	GetHostname() (string, error)
+	UpdateHostname(string) error
+}
+
 // CreateServiceApp is used to start a new service application from main.go
 func CreateServiceApp(factory clientfct.ClientFactory) *MainApp {
 	app := MainApp{
 		serverInstance: &systemServer{Clients: factory.CreateClients()},
 	}
-	var CtrlOsfs utils.FileSystem = utils.OsFS{}
-	var CtrlUt utils.Utils = utils.OsUtils{}
-	app.serverInstance.IsysController = sysController.NewSystemController(CtrlOsfs, CtrlUt)
-	var InfoOsfs utils.FileSystem = utils.OsFS{}
-	var InfoUt utils.Utils = utils.OsUtils{}
-	app.serverInstance.IsysInfo = sysInfo.NewSystemInfo(InfoOsfs, InfoUt)
+	app.serverInstance.IsysController = createSystemController()
+	app.serverInstance.IsysInfo = createSystemInfo()
+	app.serverInstance.IhostnameController = createHostnameController()
 
 	app.done = make(chan bool)
 
 	return &app
+}
+
+func createSystemController() systemControllerAPI {
+	var CtrlOsfs utils.FileSystem = utils.OsFS{}
+	var CtrlUt utils.Utils = utils.OsUtils{}
+	return sysController.NewSystemController(CtrlOsfs, CtrlUt)
+}
+
+func createSystemInfo() systemInfoAPI {
+	var InfoOsfs utils.FileSystem = utils.OsFS{}
+	var InfoUt utils.Utils = utils.OsUtils{}
+	return sysInfo.NewSystemInfo(InfoOsfs, InfoUt)
+}
+
+func createHostnameController() hostnameControllerAPI {
+	hostnameService := hostnameservice.NewHostnameService(utils.OsUtils{}, utils.OsFS{})
+	return hostnamecontroller.NewHostnameController(*hostnameService)
 }
 
 func chownSocket(address string, userName string, groupName string) error {
@@ -293,4 +316,32 @@ func (s systemServer) ApplyCustomSettings(ctx context.Context, customSettings *a
 
 	log.Println("custom settings : ", string(customSettings.Value))
 	return &emptypb.Empty{}, nil
+}
+
+func (s systemServer) GetHostname(ctx context.Context, empty *emptypb.Empty) (*v1.Hostname, error) {
+	log.Println("GetHostname() enter:")
+	defer log.Println("GetHostname() leave")
+
+	hostname, err := s.IhostnameController.GetHostname()
+	if err != nil {
+		log.Println("GetHostname() RPC Failure err: ", err)
+		return nil, status.New(codes.Internal, "failed to get hostname").Err()
+	}
+
+	log.Println("GetHostname() success: ", hostname)
+	return &v1.Hostname{Name: hostname}, status.New(codes.OK, "fine").Err()
+}
+
+func (s systemServer) UpdateHostname(ctx context.Context, req *v1.Hostname) (*emptypb.Empty, error) {
+	log.Println("UpdateHostname() enter:")
+	defer log.Println("UpdateHostname() leave")
+
+	err := s.IhostnameController.UpdateHostname(req.Name)
+	if err != nil {
+		log.Println("UpdateHostname() RPC Failure err: ", err)
+		return &emptypb.Empty{}, status.New(codes.Internal, "failed to update hostname").Err()
+	}
+
+	log.Println("UpdateHostname() success: ", req.Name)
+	return &emptypb.Empty{}, status.New(codes.OK, "fine").Err()
 }

@@ -1,5 +1,11 @@
+/*
+ * Copyright © Siemens 2022 - 2025. ALL RIGHTS RESERVED.
+ * Licensed under the MIT license
+ * See LICENSE file in the top-level directory
+ */
+
 //
-// Copyright (c) Siemens 2023
+// Copyright (c) 2023 Siemens AG
 // Licensed under the MIT license
 // See LICENSE file in the top-level directory
 
@@ -36,6 +42,8 @@ const (
 	SystemService_GetCustomSettings_FullMethodName   = "/siemens.iedge.dmapi.system.v1.SystemService/GetCustomSettings"
 	SystemService_ApplyCustomSettings_FullMethodName = "/siemens.iedge.dmapi.system.v1.SystemService/ApplyCustomSettings"
 	SystemService_GetLogFile_FullMethodName          = "/siemens.iedge.dmapi.system.v1.SystemService/GetLogFile"
+	SystemService_UpdateHostname_FullMethodName      = "/siemens.iedge.dmapi.system.v1.SystemService/UpdateHostname"
+	SystemService_GetHostname_FullMethodName         = "/siemens.iedge.dmapi.system.v1.SystemService/GetHostname"
 )
 
 // SystemServiceClient is the client API for SystemService service.
@@ -66,6 +74,10 @@ type SystemServiceClient interface {
 	ApplyCustomSettings(ctx context.Context, in *anypb.Any, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive.
 	GetLogFile(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*LogResponse, error)
+	// Updates the hostname of the device with the provided string.
+	UpdateHostname(ctx context.Context, in *Hostname, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Retrieves the current hostname of the device.
+	GetHostname(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Hostname, error)
 }
 
 type systemServiceClient struct {
@@ -176,6 +188,26 @@ func (c *systemServiceClient) GetLogFile(ctx context.Context, in *LogRequest, op
 	return out, nil
 }
 
+func (c *systemServiceClient) UpdateHostname(ctx context.Context, in *Hostname, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, SystemService_UpdateHostname_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *systemServiceClient) GetHostname(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*Hostname, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Hostname)
+	err := c.cc.Invoke(ctx, SystemService_GetHostname_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SystemServiceServer is the server API for SystemService service.
 // All implementations must embed UnimplementedSystemServiceServer
 // for forward compatibility.
@@ -204,6 +236,10 @@ type SystemServiceServer interface {
 	ApplyCustomSettings(context.Context, *anypb.Any) (*emptypb.Empty, error)
 	// Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive.
 	GetLogFile(context.Context, *LogRequest) (*LogResponse, error)
+	// Updates the hostname of the device with the provided string.
+	UpdateHostname(context.Context, *Hostname) (*emptypb.Empty, error)
+	// Retrieves the current hostname of the device.
+	GetHostname(context.Context, *emptypb.Empty) (*Hostname, error)
 	mustEmbedUnimplementedSystemServiceServer()
 }
 
@@ -243,6 +279,12 @@ func (UnimplementedSystemServiceServer) ApplyCustomSettings(context.Context, *an
 }
 func (UnimplementedSystemServiceServer) GetLogFile(context.Context, *LogRequest) (*LogResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLogFile not implemented")
+}
+func (UnimplementedSystemServiceServer) UpdateHostname(context.Context, *Hostname) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateHostname not implemented")
+}
+func (UnimplementedSystemServiceServer) GetHostname(context.Context, *emptypb.Empty) (*Hostname, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHostname not implemented")
 }
 func (UnimplementedSystemServiceServer) mustEmbedUnimplementedSystemServiceServer() {}
 func (UnimplementedSystemServiceServer) testEmbeddedByValue()                       {}
@@ -445,6 +487,42 @@ func _SystemService_GetLogFile_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SystemService_UpdateHostname_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Hostname)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemServiceServer).UpdateHostname(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemService_UpdateHostname_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemServiceServer).UpdateHostname(ctx, req.(*Hostname))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SystemService_GetHostname_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SystemServiceServer).GetHostname(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SystemService_GetHostname_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SystemServiceServer).GetHostname(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SystemService_ServiceDesc is the grpc.ServiceDesc for SystemService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -491,6 +569,14 @@ var SystemService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetLogFile",
 			Handler:    _SystemService_GetLogFile_Handler,
+		},
+		{
+			MethodName: "UpdateHostname",
+			Handler:    _SystemService_UpdateHostname_Handler,
+		},
+		{
+			MethodName: "GetHostname",
+			Handler:    _SystemService_GetHostname_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

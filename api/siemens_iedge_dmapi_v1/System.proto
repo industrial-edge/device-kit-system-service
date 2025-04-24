@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Siemens 2023
+ * Copyright © Siemens 2021 - 2025. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -66,6 +66,11 @@ message LogRequest{
 message LogResponse{
     string logPath =1; // Full file path for collected log archive.
 }
+
+// Represents the network name of a device. It includes the hostname string, which should adhere to specific format and length requirements as needed by your network or system configuration.
+message Hostname {
+    string name = 1; // The hostname string. Ensure it follows the necessary format and length constraints.
+}
  
 // System service ,uses a UNIX Domain Socket "/var/run/devicemodel/system.sock" for GRPC communication.
 // protoc  generates both client and server instance for this Service.
@@ -102,5 +107,9 @@ service SystemService {
     //Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. 
     rpc GetLogFile(LogRequest) returns(LogResponse);
 
-  
+    // Updates the hostname of the device with the provided string.
+    rpc UpdateHostname(Hostname) returns(google.protobuf.Empty);
+
+    // Retrieves the current hostname of the device.
+    rpc GetHostname(google.protobuf.Empty) returns(Hostname);
 }
