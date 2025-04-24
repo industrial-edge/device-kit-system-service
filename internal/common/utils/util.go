@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Siemens 2021
+ * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -7,6 +7,7 @@
 package utils
 
 import (
+	"os"
 	"os/exec"
 	systemapi "systemservice/api/siemens_iedge_dmapi_v1"
 	"time"
@@ -20,6 +21,7 @@ const (
 	shell = "bash"
 	//DefaultConfigPath is the absolute path for Limits and MonitoredStorage configuration
 	DefaultConfigPath = "/opt/limits/default.json"
+	DefaultHostname   = "localhost"
 )
 
 // Utils Interface has the wrapper of util calls
@@ -31,6 +33,8 @@ type Utils interface {
 	CPUCounts(logical bool) (int, error)
 	CPUInfo() ([]cpu.InfoStat, error)
 	CPUIdleTime() ([]cpu.TimesStat, error)
+	OsHostname() (string, error)
+	SetHostnameEnv(key, value string) error
 }
 
 // OsUtils struct for wrappers
@@ -72,6 +76,13 @@ func (OsUtils) CPUIdleTime() ([]cpu.TimesStat, error) {
 	return cpu.Times(false)
 }
 
+func (OsUtils) OsHostname() (string, error) {
+	return os.Hostname()
+}
+
+func (OsUtils) SetHostnameEnv(key, value string) error {
+	return os.Setenv(key, value)
+}
 
 // DefaultConfig stores embedded objects inside default.json
 type DefaultConfig struct {

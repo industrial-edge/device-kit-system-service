@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Siemens 2021
+ * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -32,6 +32,9 @@ type MUtil struct {
 	IdleTimeErr    error
 	Frequency      float64
 	FrequencyErr   error
+	HostnameVal    string
+	HostnameErr    error
+	SetenvErr      error
 }
 
 // CmdContainer holds the Command and error list for the mock command method
@@ -81,12 +84,24 @@ func (util *MUtil) CPUFrequency() (float64, error) {
 	return util.Frequency, util.FrequencyErr
 }
 
+// OsHostname mocks os.Hostname
+func (util *MUtil) OsHostname() (string, error) {
+	return util.HostnameVal, util.HostnameErr
+}
+
+// SetHostnameEnv mocks os.Setenv
+func (util *MUtil) SetHostnameEnv(key, value string) error {
+	return util.SetenvErr
+}
+
 // MFS represents Mocked File System
 type MFS struct {
 	ReadFileCnt    int
 	ReadFileList   []ReadFileContainer
 	OpenFileErr    error
 	OpenFileHandle *os.File
+	WriteFileCnt   int
+	WriteFileList  []WriteFileContainer
 	WriteFileErr   error
 	StatVal        os.FileInfo
 	StatErr        error
@@ -96,6 +111,11 @@ type MFS struct {
 type ReadFileContainer struct {
 	ReadFileErr error
 	ReadFileVal []byte
+}
+
+// WriteFileContainer holds the error list for the mock writefile method
+type WriteFileContainer struct {
+	WriteFileErr error
 }
 
 // OpenFile method is mock of os.OpenFile
@@ -111,7 +131,8 @@ func (fs *MFS) ReadFile(filename string) ([]byte, error) {
 
 // WriteFile method is mock of ioutil.WriteFile
 func (fs *MFS) WriteFile(filename string, data []byte, perm os.FileMode) error {
-	return fs.WriteFileErr
+	fs.WriteFileCnt++
+	return fs.WriteFileList[fs.WriteFileCnt-1].WriteFileErr
 }
 
 // Stat method is mock of os.Stat
