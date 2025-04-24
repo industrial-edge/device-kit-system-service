@@ -135,6 +135,9 @@ System Resource , memory or storage.
 | usedSpaceInGB | [float](#float) |  | Used space of storage device in Gigabytes e.g: 23.2 |
 | percentageFreeSpace | [float](#float) |  | Percentage of available space e.g: 3.5 |
 | percentageUsedSpace | [float](#float) |  | Percentage of used space e.g: 96.5 |
+| diskType | [string](#string) |  | Type of disk eg: "HDD" or "SSD" |
+| diskTotalReadSectorsInMB | [float](#float) |  | Total number of sectors read successfully in Megabytes e.g: 58.9 |
+| diskTotalWriteSectorsInMB | [float](#float) |  | Total number of sectors written successfully in Megabytes e.g: 32.7 |
 
 
 
