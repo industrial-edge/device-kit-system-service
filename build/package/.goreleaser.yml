@@ -1,3 +1,8 @@
+# Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
+# Licensed under the MIT license
+# See LICENSE file in the top-level directory
+
+version: 2
 project_name: dm-system
 dist: dist
 env:
@@ -11,7 +16,7 @@ snapshot:
   # for example).
   #
   # Default is `{{ .Tag }}-SNAPSHOT-{{.ShortCommit}}`.
-  name_template: "{{ .Env.TAG }}"
+  version_template: "{{ .Env.TAG }}"
 
 builds:
   - main: ../../cmd/systemservice
@@ -38,7 +43,7 @@ nfpms:
   homepage: https://github.com/industrial-edge/device-kit-system-service
   maintainer: https://github.com/industrial-edge/device-kit-system-service
   description: System Service is gRPC based System resource tracker and system controller.
-  license: Copyright (c) Siemens 2023
+  license: Copyright (c) 2023 Siemens AG
 
   # Packages to be generated.
   formats:
@@ -47,6 +52,7 @@ nfpms:
 # Packages your package depends on.
   dependencies:
     - dmidecode
+    - util-linux (>=2.33)
 
   contents:
     - src: "dm-system.service"

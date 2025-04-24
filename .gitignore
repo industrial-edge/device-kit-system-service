@@ -4,9 +4,15 @@ logs\\pclint-importer/
 .idea/*
 .vscode/
 **/coverage.cov
-**/*report.out
 build/package/dist**
 **/bin**
 build/package/coverage_global.txt
 build/package/coverage.html
 .cache/*
+.gitlab/*
+
+build/package/govet-report.out
+build/package/golint-report.out
+build/package/golangcilint-report.xml
+build/package/gosec-report.json
+build/package/bin

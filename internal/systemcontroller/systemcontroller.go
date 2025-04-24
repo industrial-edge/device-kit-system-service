@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Siemens 2021
+ * Copyright © Siemens 2020 - 2025. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -14,6 +14,8 @@ import (
 	"systemservice/internal/clientfactory"
 	"systemservice/internal/common"
 	"systemservice/internal/common/utils"
+	"systemservice/internal/hostnamecontroller"
+	"systemservice/internal/hostnamecontroller/hostnameservice"
 	"time"
 )
 
@@ -23,19 +25,24 @@ const (
 	shutdown        = systemctl + "poweroff"
 	reboot          = systemctl + "reboot"
 	removeCommand   = "rm -rf" + blank
+	truncateCommand = "truncate -c -s0" + blank
 	dockerDataQuery = "docker info --format '{{json .DockerRootDir}}'"
 	pathDockerData  = "edge-iot-core/Data/edgeresetflag"
 )
 
 // SystemController is the controller utility
 type SystemController struct {
-	fs utils.FileSystem
-	ut utils.Utils
+	fs              utils.FileSystem
+	ut              utils.Utils
+	hostnameService *hostnameservice.HostnameService
+	hostnameControl *hostnamecontroller.HostnameController
 }
 
 // NewSystemController to create a new instance of SystemController
 func NewSystemController(fsVal utils.FileSystem, utVal utils.Utils) *SystemController {
-	return &SystemController{fs: fsVal, ut: utVal}
+	hostnameService := hostnameservice.NewHostnameService(utVal, fsVal)
+	hostnameControl := hostnamecontroller.NewHostnameController(*hostnameService)
+	return &SystemController{fs: fsVal, ut: utVal, hostnameService: hostnameService, hostnameControl: hostnameControl}
 }
 
 // ShutdownDevice method performs device shutdown operation
@@ -74,10 +81,23 @@ func (s SystemController) RestartDevice() error {
 
 // HardReset method performs factory reset operation
 func (s SystemController) HardReset(ctx context.Context, clients *clientfactory.ClientPack) error {
+
+	//Reset to make the hostname default.
+	err := s.resetHostname()
+	if err != nil {
+		log.Printf("systemcontroller HardReset() resetHostname Failed, error: %s", err.Error())
+		return err
+	}
+
 	log.Println("All the contents regarding users/applications should be deleted from regarding directories/mount-points.")
 
 	if err := s.RemoveContent(); err != nil {
 		log.Printf("systemcontroller HardReset() RemoveContent Failed, error: %s", err.Error())
+		return err
+	}
+
+	if err := s.TruncateContent(); err != nil {
+		log.Printf("systemcontroller HardReset() TruncateContent Failed, error: %s", err.Error())
 		return err
 	}
 
@@ -91,6 +111,17 @@ func (s SystemController) HardReset(ctx context.Context, clients *clientfactory.
 	return nil
 }
 
+func (s SystemController) resetHostname() error {
+	log.Println("systemcontroller:resetHostname() Updating hostname, Enter")
+	err := s.hostnameControl.UpdateHostname(utils.DefaultHostname)
+	if err != nil {
+		log.Printf("Updating hostname failed on hard reset due to %s", err)
+		return err
+	}
+	log.Println("systemcontroller:resetHostname() Updating hostname, Leave")
+	return nil
+}
+
 // RemoveContent removes specific files.
 func (s SystemController) RemoveContent() error {
 	dockerRootDir, err := s.GetDockerRootDir()
@@ -101,13 +132,28 @@ func (s SystemController) RemoveContent() error {
 
 	// Construct the absolute path of the file to be removed
 	absolutePathOfDockerData := fmt.Sprintf("%s/%s", dockerRootDir, pathDockerData)
-	filesToRemove := common.GetMandatoryPaths()
+	filesToRemove := common.GetMandatoryDeletionPaths()
 	filesToRemove = append(filesToRemove, absolutePathOfDockerData)
 
 	// Remove specific files
 	for _, file := range filesToRemove {
 		if err := s.RemoveFile(file); err != nil {
 			log.Printf("Error occured: '%s' could not be removed: %s", file, err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+// TrunacteContent empties specific files.
+func (s SystemController) TruncateContent() error {
+	filesToRemove := common.GetMandatoryTruncatePaths()
+
+	// Truncate specific files
+	for _, file := range filesToRemove {
+		if err := s.TruncateFile(file); err != nil {
+			log.Printf("Error occured: '%s' could not be truncated: %s", file, err)
 			return err
 		}
 	}
@@ -125,6 +171,19 @@ func (s SystemController) RemoveFile(filePath string) error {
 	}
 
 	log.Printf("%s has been successfully removed", filePath)
+	return nil
+}
+
+// TruncateFile truncates a file
+func (s SystemController) TruncateFile(filePath string) error {
+	truncateCommand := truncateCommand + filePath
+	output, err := s.ut.Commander(truncateCommand)
+	if err != nil {
+		log.Printf("Error occured: %s encountered an error during truncation, output: %s, error: %s", filePath, string(output), err)
+		return err
+	}
+
+	log.Printf("%s has been successfully truncated", filePath)
 	return nil
 }
 

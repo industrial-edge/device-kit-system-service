@@ -1,15 +1,30 @@
+/*
+ * Copyright © Siemens 2023 - 2025. ALL RIGHTS RESERVED.
+ * Licensed under the MIT license
+ * See LICENSE file in the top-level directory
+ */
+
 package common
 
 const (
-	pathDeviceName        = "/var/device.name"
-	pathDeviceID          = "/var/device.id"
-	pathCpuResourcePlugin = "/etc/ie-resource-plugins/*"
+	pathDeviceName                  = "/var/device.name"
+	pathDeviceID                    = "/var/device.id"
+	pathResourcePluginConfiguration = "/etc/ie-resource-plugins/*"
+	pathResourceManagerDb           = "/var/lib/ie-resource-manager/Allocation_Persistence.json"
+	pathNetworkResourcePluginDb     = "/var/lib/ie-docker-network-plugin/network/files/iedge-kv.db"
 )
 
-func GetMandatoryPaths() []string {
+func GetMandatoryDeletionPaths() []string {
 	return []string{
 		pathDeviceName,
 		pathDeviceID,
-		pathCpuResourcePlugin,
+		pathResourcePluginConfiguration,
+		pathResourceManagerDb,
+	}
+}
+
+func GetMandatoryTruncatePaths() []string {
+	return []string{
+		pathNetworkResourcePluginDb,
 	}
 }

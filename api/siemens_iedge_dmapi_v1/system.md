@@ -3,6 +3,7 @@
 - [System.proto](#System.proto)
     - [Cpu](#siemens.iedge.dmapi.system.v1.Cpu)
     - [FirmwareInfo](#siemens.iedge.dmapi.system.v1.FirmwareInfo)
+    - [Hostname](#siemens.iedge.dmapi.system.v1.Hostname)
     - [Limits](#siemens.iedge.dmapi.system.v1.Limits)
     - [LogRequest](#siemens.iedge.dmapi.system.v1.LogRequest)
     - [LogResponse](#siemens.iedge.dmapi.system.v1.LogResponse)
@@ -52,6 +53,21 @@ FirmwareInfo contains Firmware Version.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | version | [string](#string) |  | Firmware version. |
+
+
+
+
+
+
+<a name="siemens.iedge.dmapi.system.v1.Hostname"></a>
+
+### Hostname
+Represents the network name of a device. It includes the hostname string, which should adhere to specific format and length requirements as needed by your network or system configuration.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  | The hostname string. Ensure it follows the necessary format and length constraints. |
 
 
 
@@ -135,6 +151,9 @@ System Resource , memory or storage.
 | usedSpaceInGB | [float](#float) |  | Used space of storage device in Gigabytes e.g: 23.2 |
 | percentageFreeSpace | [float](#float) |  | Percentage of available space e.g: 3.5 |
 | percentageUsedSpace | [float](#float) |  | Percentage of used space e.g: 96.5 |
+| diskType | [string](#string) |  | Type of disk eg: "HDD" or "SSD" |
+| diskTotalReadSectorsInMB | [float](#float) |  | Total number of sectors read successfully in Megabytes e.g: 58.9 |
+| diskTotalWriteSectorsInMB | [float](#float) |  | Total number of sectors written successfully in Megabytes e.g: 32.7 |
 
 
 
@@ -184,6 +203,8 @@ GRPC Status codes : https://developers.google.com/maps-booking/reference/grpc-ap
 | GetCustomSettings | [.google.protobuf.Empty](#google.protobuf.Empty) | [.google.protobuf.Any](#google.protobuf.Any) | Returns device specific custom settings. |
 | ApplyCustomSettings | [.google.protobuf.Any](#google.protobuf.Any) | [.google.protobuf.Empty](#google.protobuf.Empty) | Applies device specific custom settings. |
 | GetLogFile | [LogRequest](#siemens.iedge.dmapi.system.v1.LogRequest) | [LogResponse](#siemens.iedge.dmapi.system.v1.LogResponse) | Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. |
+| UpdateHostname | [Hostname](#siemens.iedge.dmapi.system.v1.Hostname) | [.google.protobuf.Empty](#google.protobuf.Empty) | Updates the hostname of the device with the provided string. |
+| GetHostname | [.google.protobuf.Empty](#google.protobuf.Empty) | [Hostname](#siemens.iedge.dmapi.system.v1.Hostname) | Retrieves the current hostname of the device. |
 
  <!-- end services -->
 

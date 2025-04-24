@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Siemens 2023
+ * Copyright © Siemens 2021 - 2025. ALL RIGHTS RESERVED.
  * Licensed under the MIT license
  * See LICENSE file in the top-level directory
  */
@@ -29,6 +29,9 @@ message Resource{
     float usedSpaceInGB =3; // Used space of storage device in Gigabytes e.g: 23.2
     float percentageFreeSpace =4; // Percentage of available space e.g: 3.5
     float percentageUsedSpace =5; // Percentage of used space e.g: 96.5
+    string diskType =6; // Type of disk eg: "HDD" or "SSD"
+    float diskTotalReadSectorsInMB =7; // Total number of sectors read successfully in Megabytes e.g: 58.9
+    float diskTotalWriteSectorsInMB =8; // Total number of sectors written successfully in Megabytes e.g: 32.7
 }
 // Cpu type contains Cpu utilization at the current moment.
 message Cpu{
@@ -62,6 +65,11 @@ message LogRequest{
 // LogResponse type, contains the full path for the collected log archive.
 message LogResponse{
     string logPath =1; // Full file path for collected log archive.
+}
+
+// Represents the network name of a device. It includes the hostname string, which should adhere to specific format and length requirements as needed by your network or system configuration.
+message Hostname {
+    string name = 1; // The hostname string. Ensure it follows the necessary format and length constraints.
 }
  
 // System service ,uses a UNIX Domain Socket "/var/run/devicemodel/system.sock" for GRPC communication.
@@ -99,5 +107,9 @@ service SystemService {
     //Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. 
     rpc GetLogFile(LogRequest) returns(LogResponse);
 
-  
+    // Updates the hostname of the device with the provided string.
+    rpc UpdateHostname(Hostname) returns(google.protobuf.Empty);
+
+    // Retrieves the current hostname of the device.
+    rpc GetHostname(google.protobuf.Empty) returns(Hostname);
 }
