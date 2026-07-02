@@ -29,7 +29,7 @@ message Resource{
     float usedSpaceInGB =3; // Used space of storage device in Gigabytes e.g: 23.2
     float percentageFreeSpace =4; // Percentage of available space e.g: 3.5
     float percentageUsedSpace =5; // Percentage of used space e.g: 96.5
-    string diskType =6; // Type of disk eg: "HDD" or "SSD"
+    string diskType =6; // Type of disk eg: "HDD" or "SSD" or "EMMC"
     float diskTotalReadSectorsInMB =7; // Total number of sectors read successfully in Megabytes e.g: 58.9
     float diskTotalWriteSectorsInMB =8; // Total number of sectors written successfully in Megabytes e.g: 32.7
 }
@@ -49,6 +49,16 @@ message Stats{
     Resource memory =3; // RAM Utilization Information
     string upTime =4; // Elapsed time since the device is started.
 }  
+
+// DeviceInfo contains the hardware and firmware identification information for the device.
+message DeviceInfo{
+    string manufacturerName =1; // manufacturerName identifies the device manufacturer (e.g., "Siemens AG")
+    string serialNumber =2; // serialNumber provides the unique device serial number for identification 
+    string productId =3; // productId contains the product identifier (MLFB for Siemens devices)
+    string firmwareVersion =4; // firmwareVersion indicates the currently installed firmware version
+    string productName =5; // productName describes the product type (e.g., "SIMATIC Edge Device")
+    string biosVersion =6; // BIOS Version. 
+}
 
 // System Limits for the EdgeRuntime.
 message Limits{
@@ -71,6 +81,7 @@ message LogResponse{
 message Hostname {
     string name = 1; // The hostname string. Ensure it follows the necessary format and length constraints.
 }
+
  
 // System service ,uses a UNIX Domain Socket "/var/run/devicemodel/system.sock" for GRPC communication.
 // protoc  generates both client and server instance for this Service.
@@ -109,6 +120,9 @@ service SystemService {
 
     // Updates the hostname of the device with the provided string.
     rpc UpdateHostname(Hostname) returns(google.protobuf.Empty);
+
+    //Returns DeviceInfo information of system.
+    rpc GetDeviceInfo(google.protobuf.Empty) returns(DeviceInfo);
 
     // Retrieves the current hostname of the device.
     rpc GetHostname(google.protobuf.Empty) returns(Hostname);
