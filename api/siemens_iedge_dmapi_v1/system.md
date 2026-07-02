@@ -2,6 +2,7 @@
 
 - [System.proto](#System.proto)
     - [Cpu](#siemens.iedge.dmapi.system.v1.Cpu)
+    - [DeviceInfo](#siemens.iedge.dmapi.system.v1.DeviceInfo)
     - [FirmwareInfo](#siemens.iedge.dmapi.system.v1.FirmwareInfo)
     - [Hostname](#siemens.iedge.dmapi.system.v1.Hostname)
     - [Limits](#siemens.iedge.dmapi.system.v1.Limits)
@@ -38,6 +39,26 @@ Cpu type contains Cpu utilization at the current moment.
 | modelInfo | [string](#string) |  | intel x64 etc.. |
 | idleTime | [double](#double) |  | Idle time of CPU eg: 3662.50 (in seconds) |
 | frequency | [double](#double) |  | Frequency of CPU eg: 2495.999 (in MHz) |
+
+
+
+
+
+
+<a name="siemens.iedge.dmapi.system.v1.DeviceInfo"></a>
+
+### DeviceInfo
+DeviceInfo contains the hardware and firmware identification information for the device.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| manufacturerName | [string](#string) |  | manufacturerName identifies the device manufacturer (e.g., "Siemens AG") |
+| serialNumber | [string](#string) |  | serialNumber provides the unique device serial number for identification |
+| productId | [string](#string) |  | productId contains the product identifier (MLFB for Siemens devices) |
+| firmwareVersion | [string](#string) |  | firmwareVersion indicates the currently installed firmware version |
+| productName | [string](#string) |  | productName describes the product type (e.g., "SIMATIC Edge Device") |
+| biosVersion | [string](#string) |  | BIOS Version. |
 
 
 
@@ -204,6 +225,7 @@ GRPC Status codes : https://developers.google.com/maps-booking/reference/grpc-ap
 | ApplyCustomSettings | [.google.protobuf.Any](#google.protobuf.Any) | [.google.protobuf.Empty](#google.protobuf.Empty) | Applies device specific custom settings. |
 | GetLogFile | [LogRequest](#siemens.iedge.dmapi.system.v1.LogRequest) | [LogResponse](#siemens.iedge.dmapi.system.v1.LogResponse) | Collects and compress all Journald logs (mandatory) from host ,(plus optional device specific log/report) and then returns a single file path for this new log archive. |
 | UpdateHostname | [Hostname](#siemens.iedge.dmapi.system.v1.Hostname) | [.google.protobuf.Empty](#google.protobuf.Empty) | Updates the hostname of the device with the provided string. |
+| GetDeviceInfo | [.google.protobuf.Empty](#google.protobuf.Empty) | [DeviceInfo](#siemens.iedge.dmapi.system.v1.DeviceInfo) | Returns DeviceInfo information of system. |
 | GetHostname | [.google.protobuf.Empty](#google.protobuf.Empty) | [Hostname](#siemens.iedge.dmapi.system.v1.Hostname) | Retrieves the current hostname of the device. |
 
  <!-- end services -->

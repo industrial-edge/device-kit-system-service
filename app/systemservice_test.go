@@ -70,6 +70,10 @@ func (s tSystemInfo) GetLogFile(request *v1.LogRequest) (*v1.LogResponse, error)
 	return &v1.LogResponse{LogPath: request.SaveFolderPath + "/logs.tar.gz"}, nil
 }
 
+func (s tSystemInfo) GetDeviceInfo() (*v1.DeviceInfo, error) {
+	return &v1.DeviceInfo{}, errors.New("Failed GetDeviceInfo")
+}
+
 type MockHostnameManager struct {
 	hostname   string
 	shouldFail bool
@@ -414,4 +418,16 @@ func TestSetHostnameError(t *testing.T) {
 
 	// Kill the goroutine
 	tApp.done <- true
+}
+
+func Test_GetDeviceInfo_Failure(t *testing.T) {
+	t.Parallel()
+	tApp, dummyctx, dummyEmpty := initializeRPCDatas()
+
+	_, err := tApp.serverInstance.GetDeviceInfo(dummyctx, dummyEmpty)
+
+	//Kill the goroutine
+	tApp.done <- true
+
+	assert.Contains(t, err.Error(), "failed to get device info", "Did not get expected result. expected: %q got: %q", "failed to get device info", err.Error())
 }

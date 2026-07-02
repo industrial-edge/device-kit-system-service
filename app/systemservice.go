@@ -61,6 +61,7 @@ type systemInfoAPI interface {
 	GetLimits() (*v1.Limits, error)
 	GetFirmwareInfo() (*v1.FirmwareInfo, error)
 	GetLogFile(request *v1.LogRequest) (*v1.LogResponse, error)
+	GetDeviceInfo() (*v1.DeviceInfo, error)
 }
 
 type systemControllerAPI interface {
@@ -344,4 +345,16 @@ func (s systemServer) UpdateHostname(ctx context.Context, req *v1.Hostname) (*em
 
 	log.Println("UpdateHostname() success: ", req.Name)
 	return &emptypb.Empty{}, status.New(codes.OK, "fine").Err()
+}
+
+func (s systemServer) GetDeviceInfo(ctx context.Context, e *emptypb.Empty) (*v1.DeviceInfo, error) {
+	log.Println("GetDeviceInfo() enter:")
+	defer log.Println("GetDeviceInfo() leave")
+	retval, err := s.IsysInfo.GetDeviceInfo()
+	if err != nil {
+		log.Println("GetDeviceInfo() RPC Failure err: ", err)
+		return retval, status.Errorf(codes.Internal, "failed to get device info: %v", err)
+	}
+	log.Println("GetDeviceInfo() completed successfully")
+	return retval, status.New(codes.OK, "fine").Err()
 }

@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	systemapi "systemservice/api/siemens_iedge_dmapi_v1"
 	"systemservice/internal/common/utils"
 	"systemservice/internal/limitprovider"
@@ -25,45 +26,78 @@ import (
 
 const (
 	firmwareFile         = "/etc/os-release"
+	deviceInfoFile       = "/etc/system-info"
+	deviceManufacturer   = "MANUFACTURER_NAME="
+	deviceSerialNumber   = "SERIAL_NUMBER="
+	deviceProductID      = "PRODUCT_ID="
+	deviceProductName    = "PRODUCT_NAME="
+	deviceBIOSVersion    = "BIOS_VERSION="
 	versionKEY           = "VARIANT="
 	dmidecodeVersion     = "dmidecode --string system-product-name"
 	templogfileDir       = "/tmp"
 	dmidecodeCpuMaxSpeed = "dmidecode -t processor | grep 'Max Speed'"
+	deviceInfoCacheTTL   = 5 * time.Minute
+	cpuFrequencyNotAvailable = -1.0
 )
 
 // SystemInfo is a struct that provides System Info
 type SystemInfo struct {
-	fs   utils.FileSystem
-	util utils.Utils
-	cfg  *utils.DefaultConfig
+	fs              utils.FileSystem
+	util            utils.Utils
+	cfg             *utils.DefaultConfig
+	deviceInfoCache *deviceInfoCache
+	cacheMutex      sync.RWMutex
+}
+
+type deviceInfoCache struct {
+	data      *systemapi.DeviceInfo
+	timestamp time.Time
+	ttl       time.Duration
 }
 
 // NewSystemInfo to create a new instance of SystemInfo
 func NewSystemInfo(fsVal utils.FileSystem, utVal utils.Utils) *SystemInfo {
-	var systeminfo = SystemInfo{fs: fsVal, util: utVal}
-	return &systeminfo
+	return &SystemInfo{
+		fs:              fsVal,
+		util:            utVal,
+		deviceInfoCache: nil,
+	}
+}
+
+func addErrorIfExists(errMsgs *[]string, component string, err error) {
+	if err != nil {
+		log.Printf("systeminfo:addErrorIfExists(), %s error occurred: %v", component, err)
+		*errMsgs = append(*errMsgs, fmt.Sprintf("%s: %v", component, err.Error()))
+	}
 }
 
 // GetResourceStats method provides Cpu, Storage, Memory and Uptime Stats
-func (s SystemInfo) GetResourceStats() (*systemapi.Stats, error) {
-	var err error = nil
+func (s *SystemInfo) GetResourceStats() (*systemapi.Stats, error) {
+	var errMsgs []string
+	var finalError error
 
-	cpu, err1 := s.getCPUStats()
+	cpu, cpuErr := s.getCPUStats()
 	storage := s.getStorageStats()
-	memory, err2 := s.getMemoryStat()
-	upTime, err3 := s.getUpTime()
+	memory, memoryErr := s.getMemoryStat()
+	upTime, uptimeErr := s.getUpTime()
 
-	if err1 != nil || err2 != nil || err3 != nil {
-		err = errors.New("systeminfo:getResourcestats(), failure on a get call" + err1.Error() + err2.Error() + err3.Error())
+	addErrorIfExists(&errMsgs, "CPU", cpuErr)
+	addErrorIfExists(&errMsgs, "Memory", memoryErr)
+	addErrorIfExists(&errMsgs, "Uptime", uptimeErr)
+
+	if len(errMsgs) > 0 {
+		finalError = errors.New("systeminfo:GetResourceStats() errors: " + strings.Join(errMsgs, "; "))
 	}
 
-	return &systemapi.Stats{Cpu: cpu,
+	return &systemapi.Stats{
+		Cpu:            cpu,
 		StorageDevices: storage,
 		Memory:         memory,
-		UpTime:         upTime}, err
+		UpTime:         upTime,
+	}, finalError
 }
 
-func (s SystemInfo) getFileContent(path string) (string, error) {
+func (s *SystemInfo) getFileContent(path string) (string, error) {
 	content, err := s.fs.ReadFile(path)
 	if err != nil {
 		log.Println("systeminfo:getFileContent(), Cannot Read File! err:", err)
@@ -72,20 +106,20 @@ func (s SystemInfo) getFileContent(path string) (string, error) {
 	return string(content), nil
 }
 
-func (s SystemInfo) getMatchingField(content string, key string, space uint16) (string, error) {
+func (s *SystemInfo) getMatchingField(content string, key string, space uint16) (string, error) {
 	//Search for key value
 	if index := strings.Index(content, key); index >= 0 {
-		log.Printf("systeminfo:getMatchingField(), key value:%q", key)
+		log.Printf("systeminfo:getMatchingField(), searching for key: %q", strings.TrimSuffix(key, "="))
 		var val string
-		if indexEnd := strings.Index(string(content[index:len(content)]), string('\n')); indexEnd >= 0 {
+		if indexEnd := strings.Index(content[index:], string('\n')); indexEnd >= 0 {
 			val = string(content[(index + len(key) + int(space)):(index + indexEnd)])
 			val = strings.Replace(val, "\"", "", -1)
-			log.Println("systeminfo:getMatchingField(), value:", val)
+			log.Printf("systeminfo:getMatchingField(), found key=%q, value=%q", strings.TrimSuffix(key, "="), val)
 		} else {
 			//else means there is no new line after key value..Therefore we need read up to end of string
 			val = string(content[(index + len(key) + int(space)):])
 			val = strings.Replace(val, "\"", "", -1)
-			log.Println("systeminfo:getMatchingField(), -no new line- value: ", val)
+			log.Printf("systeminfo:getMatchingField(), found key=%q, value=%q (no newline)", strings.TrimSuffix(key, "="), val)
 		}
 		return val, nil
 	}
@@ -94,7 +128,7 @@ func (s SystemInfo) getMatchingField(content string, key string, space uint16) (
 }
 
 // GetFirmwareInfo provides firmwave Version Info
-func (s SystemInfo) GetFirmwareInfo() (*systemapi.FirmwareInfo, error) {
+func (s *SystemInfo) GetFirmwareInfo() (*systemapi.FirmwareInfo, error) {
 	//Read Firmware Info from file
 	content, err1 := s.getFileContent(firmwareFile)
 	if err1 != nil {
@@ -110,13 +144,13 @@ func (s SystemInfo) GetFirmwareInfo() (*systemapi.FirmwareInfo, error) {
 }
 
 // GetLimits method provides NFR Limit values via limitprovider
-func (s SystemInfo) GetLimits() (*systemapi.Limits, error) {
+func (s *SystemInfo) GetLimits() (*systemapi.Limits, error) {
 	limitInstance := limitprovider.CreateLimitProvider(s.fs, s.util)
 	return limitInstance.GetLimitContent()
 }
 
 // GetModelNumber provides device model number
-func (s SystemInfo) GetModelNumber() (*systemapi.ModelNumber, error) {
+func (s *SystemInfo) GetModelNumber() (*systemapi.ModelNumber, error) {
 	var value string
 
 	//Read MLFB number from SMBIOS
@@ -132,7 +166,51 @@ func (s SystemInfo) GetModelNumber() (*systemapi.ModelNumber, error) {
 	return &systemapi.ModelNumber{ModelNumber: value}, err
 }
 
-func (s SystemInfo) getUpTime() (string, error) {
+func (s *SystemInfo) GetDeviceInfo() (*systemapi.DeviceInfo, error) {
+	s.cacheMutex.RLock()
+	if s.deviceInfoCache != nil && time.Since(s.deviceInfoCache.timestamp) < s.deviceInfoCache.ttl {
+		cached := s.deviceInfoCache.data
+		s.cacheMutex.RUnlock()
+		log.Println("systeminfo:GetDeviceInfo(), using cached data")
+		return cached, nil
+	}
+	s.cacheMutex.RUnlock()
+
+	log.Println("systeminfo:GetDeviceInfo(), cache miss, reading device info file")
+	deviceDetails, err := s.getFileContent(deviceInfoFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read device info: %w", err)
+	}
+
+	result := &systemapi.DeviceInfo{
+		ManufacturerName: s.getFieldSafe(deviceDetails, deviceManufacturer),
+		SerialNumber:     s.getFieldSafe(deviceDetails, deviceSerialNumber),
+		ProductId:        s.getFieldSafe(deviceDetails, deviceProductID),
+		FirmwareVersion:  s.getFieldSafe(deviceDetails, versionKEY),
+		ProductName:      s.getFieldSafe(deviceDetails, deviceProductName),
+		BiosVersion:      s.getFieldSafe(deviceDetails, deviceBIOSVersion),
+	}
+
+	s.cacheMutex.Lock()
+	s.deviceInfoCache = &deviceInfoCache{
+		data:      result,
+		timestamp: time.Now(),
+		ttl:       deviceInfoCacheTTL,
+	}
+	s.cacheMutex.Unlock()
+	return result, nil
+}
+
+func (s *SystemInfo) getFieldSafe(content, key string) string {
+	value, err := s.getMatchingField(content, key, 0)
+	if err != nil {
+		log.Printf("field %s not found, using empty value", key)
+		return ""
+	}
+	return value
+}
+
+func (s *SystemInfo) getUpTime() (string, error) {
 	//Get UpTime value
 	uptime, err := s.util.Uptime()
 	if err != nil {
@@ -154,7 +232,7 @@ func convertToGb(val uint64) float32 {
 	return float32((float64(val) / (1024 * 1024 * 1024)))
 }
 
-func (s SystemInfo) getMemoryStat() (*systemapi.Resource, error) {
+func (s *SystemInfo) getMemoryStat() (*systemapi.Resource, error) {
 
 	var totalSpaceInGb float32
 	var freeSpaceInGb float32
@@ -184,7 +262,7 @@ func (s SystemInfo) getMemoryStat() (*systemapi.Resource, error) {
 	}, err
 }
 
-func (s SystemInfo) getStorageStats() []*systemapi.Resource {
+func (s *SystemInfo) getStorageStats() []*systemapi.Resource {
 
 	// Load /opt/limits/default.json file into memory
 	content, err := s.getFileContent(utils.DefaultConfigPath)
@@ -270,99 +348,100 @@ func (s SystemInfo) findCpuUsage(content string) (float32, float32) {
 }
 */
 
-func (s SystemInfo) getCPUStats() (*systemapi.Cpu, error) {
-
+func (s *SystemInfo) getCPUStats() (*systemapi.Cpu, error) {
+	var allErrors []string
+	var finalError error
 	var usedCPUPercentage float32
 	var freeCPUPercentage float32
-	var modelInfo string
 	var coreCount int32
+	var modelInfo = "NOTDEFINED"
+	var idleTime float64
+	var frequency float64
 
-	var errFlag error = nil //errFlag will return only the latest error info
-	//Get cpu usage
-	if retval, err := s.util.CPUPercent((time.Second * 1), false); err != nil {
-		log.Println("systeminfo:getCpuStats(), Cannot Read cpu.Percent! err:", err)
-		errFlag = err
-	} else {
-		if len(retval) > 0 {
-			usedCPUPercentage = float32(round(retval[0], 0.05))
+	// Get CPU percentage
+	cpuPersent, err := s.util.CPUPercent((time.Second * 1), false)
+	addErrorIfExists(&allErrors, "CPUPercent", err)
+	if err == nil {
+		if len(cpuPersent) > 0 {
+			usedCPUPercentage = float32(round(cpuPersent[0], 0.05))
 			freeCPUPercentage = float32(round((100 - float64(usedCPUPercentage)), 0.05))
 		} else {
 			log.Println("systeminfo:getCpuStats(), No percentage value!")
 		}
 	}
-
 	log.Printf("systeminfo:getCpuStats(), Used Cpu: %6.2f, Free Cpu: %6.2f", usedCPUPercentage, freeCPUPercentage)
 
-	//Get Cpu Core Count
-	if retval, err := s.util.CPUCounts(false); err != nil {
-		log.Println("systeminfo:getCpuStats(), Cannot Read cpu.Counts!, err: ", err)
-		errFlag = err
-	} else {
-		coreCount = int32(retval)
+	// Get CPU core count
+	cpuCount, err := s.util.CPUCounts(false)
+	addErrorIfExists(&allErrors, "CPUCounts", err)
+	if err == nil {
+		coreCount = int32(cpuCount)
 	}
-
 	log.Println("systeminfo:getCpuStats(), Core Count: ", coreCount)
 
-	//Get Model info
-	if retval, err := s.util.CPUInfo(); err != nil {
-		log.Println("systeminfo:getCpuStats(), Cannot Read cpu.Info!, err: ", err)
-		modelInfo = "NOTDEFINED"
-		errFlag = err
-	} else {
-		if len(retval) > 0 {
-			modelInfo = s.getModelInfo(retval, modelInfo)
+	// Get model info
+	cpuInfo, err := s.util.CPUInfo()
+	addErrorIfExists(&allErrors, "CPUInfo", err)
+	if err == nil {
+		if len(cpuInfo) > 0 {
+			modelInfo = s.getModelInfo(cpuInfo, modelInfo)
 		} else {
 			log.Println("systeminfo:getCpuStats(), No Info value!")
-			modelInfo = "NOTDEFINED"
 		}
 	}
-
-	//get idle time information
-	idleTime, errIdleTime := s.getCpuIdleTime()
-	if errIdleTime != nil {
-		log.Println("systeminfo:getCpuIdleTime(), Cannot Read cpu.Times!, err: ", errIdleTime)
-		errFlag = errIdleTime
-	}
-
-	//get frequency information
-	frequency, errFrequency := s.getCpuFrequency()
-	if errFrequency != nil {
-		log.Println("systeminfo:CPUFrequency(), Cannot Read cpu.Info!, err: ", errFrequency)
-		errFlag = errFrequency
-	}
-
 	log.Println("systeminfo:getCpuStats(), Model Info: ", modelInfo)
 
-	return &systemapi.Cpu{UsedCpuPercentage: usedCPUPercentage,
+	// Get idle time
+	idleTime, errIdleTime := s.getCpuIdleTime()
+	addErrorIfExists(&allErrors, "CPUIdleTime", errIdleTime)
+
+	// Get frequency
+	frequency, errFrequency := s.getCpuFrequency()
+	addErrorIfExists(&allErrors, "CPUFrequency", errFrequency)
+
+	if len(allErrors) > 0 {
+		log.Printf("systeminfo:getCpuStats(), errors: %s", strings.Join(allErrors, "; "))
+		finalError = errors.New("systeminfo:getCpuStats() errors: " + strings.Join(allErrors, "; "))
+	}
+
+	return &systemapi.Cpu{
+		UsedCpuPercentage: usedCPUPercentage,
 		FreeCpuPercentage: freeCPUPercentage,
-		CoreCount:         int32(coreCount),
+		CoreCount:         coreCount,
 		ModelInfo:         modelInfo,
 		IdleTime:          idleTime,
-		Frequency:         frequency}, errFlag
+		Frequency:         frequency}, finalError
 }
 
-// getCpuFrequency returns the maximum value of cpu frequency from path cpufreq/cpuinfo_max_freq
-func (s SystemInfo) getCpuFrequency() (float64, error) {
+// getCpuFrequency returns the maximum value of cpu frequency from dmidecode output
+// Returns -1 without error if frequency information is not available (e.g., VirtualBox environments)
+func (s *SystemInfo) getCpuFrequency() (float64, error) {
 	maxSpeed := 0.0
 
 	// Execute the dmidecode command
 	out, err := s.util.Commander(dmidecodeCpuMaxSpeed)
 	if err != nil {
-		log.Println("systeminfo:getCpuFrequency(), cannot read Max Speed err:", err)
-		return 0, err
+		log.Printf("systeminfo:getCpuFrequency(), dmidecode command failed (likely virtualized environment): %v", err)
+		return cpuFrequencyNotAvailable, nil
 	}
 
 	// Process the dmidecode output
 	re := regexp.MustCompile(`Max Speed: (\d+) MHz`)
 	matches := re.FindAllStringSubmatch(string(out), -1)
 
+	if len(matches) == 0 {
+		// No "Max Speed" found in output (common in VirtualBox)
+		log.Println("systeminfo:getCpuFrequency(), no 'Max Speed' information found in dmidecode output")
+		return cpuFrequencyNotAvailable, nil
+	}
+
 	// Find the max speed for each match
 	for _, match := range matches {
 		if len(match) == 2 {
 			speed, err := strconv.ParseFloat(match[1], 64)
 			if err != nil {
-				log.Println("systeminfo:getCpuFrequency(), error parsing speed:", err)
-				return 0, err
+				log.Printf("systeminfo:getCpuFrequency(), error parsing speed value '%s': %v", match[1], err)
+				continue
 			}
 			if speed > maxSpeed {
 				maxSpeed = speed
@@ -374,7 +453,7 @@ func (s SystemInfo) getCpuFrequency() (float64, error) {
 }
 
 // getCpuIdleTime returns the aggregated idle time for the cpu from /proc/stat
-func (s SystemInfo) getCpuIdleTime() (float64, error) {
+func (s *SystemInfo) getCpuIdleTime() (float64, error) {
 	var overallIdleTime float64
 	if retval, err := s.util.CPUIdleTime(); err != nil {
 		log.Println("systeminfo:getCpuIdleTime(), Cannot Read cpu.Times!, err: ", err)
@@ -391,7 +470,7 @@ func (s SystemInfo) getCpuIdleTime() (float64, error) {
 }
 
 // getModelInfo, Added for arm64. The gopsutil library sets this value for the latest cpu core in /proc/cpuinfo on arm devices.
-func (s SystemInfo) getModelInfo(retval []cpu.InfoStat, modelInfo string) string {
+func (s *SystemInfo) getModelInfo(retval []cpu.InfoStat, modelInfo string) string {
 	for i := len(retval) - 1; i >= 0; i-- {
 		if retval[i].ModelName != "" {
 			log.Printf("Model information found for the %d. CPU core.", i+1)
@@ -403,7 +482,7 @@ func (s SystemInfo) getModelInfo(retval []cpu.InfoStat, modelInfo string) string
 }
 
 // GetLogFile method returns the path of compressed log file with LogResponse struct
-func (s SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogResponse, error) {
+func (s *SystemInfo) GetLogFile(request *systemapi.LogRequest) (*systemapi.LogResponse, error) {
 
 	// Check whether given path exist or not if it doesn't exist then return.
 	pathCheckCommand := "[ -d " + strings.TrimSuffix(request.SaveFolderPath, "/") + " ]"
